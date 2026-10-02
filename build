@@ -35,11 +35,10 @@ or an SDL2 build-* backend shown by --list.
 Examples:
   ./build menuconfig
   ./build
-  ./build
   ./build --llvm
   ./build llvm-bootstrap
   ./build macos --universal
-  ./build build-debug-g3-sdl2
+  ./build build-debug-g3
   ./build mingw -- --disable-avcodec
 EOF_HELP
 }
@@ -51,7 +50,8 @@ list() {
         [ -f "$f" ] || continue
         name="$(basename -- "$f")"
         case "$name" in
-            *sdl2*) printf '%s\n' "$name" ;;
+            build-mingw-lowend9x|build-mingw-hx-dos|build-riscos|build-macosold) continue ;;
+            *) printf '%s\n' "$name" ;;
         esac
     done | LC_ALL=C sort
 }
@@ -59,21 +59,22 @@ list() {
 map_profile() {
     case "$1" in
         auto)       printf '%s\n' auto ;;
-        unix)       printf '%s\n' build-sdl2 ;;
-        macos)      printf '%s\n' build-macos-sdl2 ;;
-        mingw)      printf '%s\n' build-mingw-sdl2 ;;
+        unix)       printf '%s\n' build-unix ;;
+        macos)      printf '%s\n' build-macos ;;
+        mingw)      printf '%s\n' build-mingw ;;
         emscripten) printf '%s\n' build-emscripten-sdl2 ;;
-        build-*sdl2*) printf '%s\n' "$1" ;;
+        build-mingw-lowend9x|build-mingw-hx-dos|build-riscos|build-macosold) return 1 ;;
+        build-*)    printf '%s\n' "$1" ;;
         *)          return 1 ;;
     esac
 }
 
 auto_backend() {
     case "$(uname -s 2>/dev/null)" in
-        Darwin)                                  printf '%s\n' build-macos-sdl2 ;;
-        MINGW*|MSYS*|CYGWIN*)                    printf '%s\n' build-mingw-sdl2 ;;
+        Darwin)                                  printf '%s\n' build-macos ;;
+        MINGW*|MSYS*|CYGWIN*)                    printf '%s\n' build-mingw ;;
         Linux|FreeBSD|OpenBSD|NetBSD|DragonFly|SunOS)
-                                                printf '%s\n' build-sdl2 ;;
+                                                printf '%s\n' build-unix ;;
         *) fail "unknown host; use --profile or a build-* backend" ;;
     esac
 }
@@ -171,7 +172,7 @@ backend="$(map_profile "$profile")" || fail "unknown profile '$profile'"
 
 if [ "$macos_universal" -eq 1 ]; then
     case "$backend" in
-        build-macos-sdl2)
+        build-macos)
             have_universal=0
             for arg in "${args[@]}"; do
                 [ "$arg" = universal ] && have_universal=1

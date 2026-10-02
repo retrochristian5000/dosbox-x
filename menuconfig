@@ -16,7 +16,12 @@ compiler=system
 warn() { printf 'menuconfig: %s\n' "$*" >&2; }
 
 valid_profile() {
-    case "$1" in auto|unix|macos|mingw|emscripten|build-*sdl2*) return 0 ;; *) return 1 ;; esac
+    case "$1" in
+        auto|unix|macos|mingw|emscripten) return 0 ;;
+        build-mingw-lowend9x|build-mingw-hx-dos|build-riscos|build-macosold) return 1 ;;
+        build-*) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 load_config() {
@@ -73,7 +78,10 @@ choose_profile() {
     for f in "$root"/build-*; do
         if [ -f "$f" ]; then
             local name="$(basename -- "$f")"
-            case "$name" in *sdl2*) choices+=("$name") ;; esac
+            case "$name" in
+                build-mingw-lowend9x|build-mingw-hx-dos|build-riscos|build-macosold) ;;
+                *) choices+=("$name") ;;
+            esac
         fi
     done
 

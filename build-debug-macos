@@ -12,13 +12,12 @@ if test -z "${top}" ; then exit 1; fi
 # fix
 chmod +x vs/sdl/build-scripts/strip_fPIC.sh
 
-# prefer to compile against our own copy of SDL 1.x
-echo "Compiling our internal SDL 1.x"
-(cd vs/sdl && ./build-dosbox.sh) || exit 1
-
-# prefer to compile against our own copy of SDLnet 1.x
-echo "Compiling our internal SDLnet 1.x"
-(cd vs/sdlnet && ./build-dosbox.sh) || exit 1
+# prefer to compile against our own copy of SDL 2.x IF the system does not provide one
+#x=$(which sdl2-config)
+#if test -z "${x}" ; then
+    echo "Compiling our internal SDL 2.x"
+    (cd vs/sdl2 && ./build-dosbox.sh) || exit 1
+#fi
 
 # prefer to compile against our own zlib
 echo "Compiling our internal zlib"
@@ -77,6 +76,6 @@ fi
 # now compile ourself
 echo "Compiling DOSBox-X"
 chmod +x configure
-./configure --enable-debug=heavy --prefix=/usr "${opts}" "${@}" || exit 1
+./configure --enable-debug=heavy --prefix=/usr --enable-sdl2 "${opts}" "${@}" || exit 1
 make -j3 || exit 1
 
