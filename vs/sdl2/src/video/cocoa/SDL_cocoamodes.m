@@ -84,6 +84,20 @@ static int CG_SetError(const char *prefix, CGDisplayErr result)
     return SDL_SetError("%s: %s", prefix, error);
 }
 
+static NSScreen *GetNSScreenForDisplayID(CGDirectDisplayID displayID)
+{
+    NSArray *screens = [NSScreen screens];
+
+    for (NSScreen *screen in screens) {
+        const CGDirectDisplayID thisDisplay =
+            (CGDirectDisplayID)[[[screen deviceDescription] objectForKey:@"NSScreenNumber"] unsignedIntValue];
+        if (thisDisplay == displayID) {
+            return screen;
+        }
+    }
+    return nil;
+}
+
 static int GetDisplayModeRefreshRate(CGDisplayModeRef vidmode, CVDisplayLinkRef link)
 {
     int refreshRate = (int) (CGDisplayModeGetRefreshRate(vidmode) + 0.5);
@@ -280,7 +294,19 @@ static SDL_bool GetDisplayMode(_THIS, CGDisplayModeRef vidmode, SDL_bool vidmode
 
 static const char *Cocoa_GetDisplayName(CGDirectDisplayID displayID)
 {
-    /* This API is deprecated in 10.9 with no good replacement (as of 10.15). */
+#if defined(MAC_OS_X_VERSION_10_15) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_15
+    if (@available(macOS 10.15, *)) {
+        NSScreen *screen = GetNSScreenForDisplayID(displayID);
+        if (screen) {
+            const char *name = [screen.localizedName UTF8String];
+            if (name) {
+                return SDL_strdup(name);
+            }
+        }
+    }
+#endif
+
+    /* Compatibility fallback for macOS before 10.15. */
     io_service_t servicePort = CGDisplayIOServicePort(displayID);
     CFDictionaryRef deviceInfo = IODisplayCreateInfoDictionary(servicePort, kIODisplayOnlyPreferredName);
     NSDictionary *localizedNames = [(__bridge NSDictionary *)deviceInfo objectForKey:[NSString stringWithUTF8String:kDisplayProductName]];
