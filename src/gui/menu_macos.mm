@@ -121,7 +121,7 @@ bool SetClipboard(std::string value) {
 	NSPasteboard* pb = [NSPasteboard generalPasteboard];
 	NSString* text = [NSString stringWithUTF8String:value.c_str()];
 	[pb clearContents];
-	return [pb setString:text forType:NSStringPboardType];
+	return [pb setString:text forType:NSPasteboardTypeString];
 }
 
 bool has_touch_bar_support = false;
@@ -509,7 +509,7 @@ std::string macosx_prompt_folder(const char *default_folder) {
     if (default_folder != NULL) [panel setDirectoryURL:[NSURL fileURLWithPath:[NSString stringWithFormat:@"%s",default_folder]]];
 
     r = [panel runModal];
-    if (r == NSFileHandlingPanelOKButton) {
+    if (r == NSModalResponseOK) {
         NSArray *urls = [panel URLs];
         if ([urls count] > 0) {
             NSURL *url = urls[0];
@@ -533,7 +533,7 @@ void macosx_alert(const char *title, const char *message) {
     NSAlert *alert = [[NSAlert alloc] init];
     [alert setMessageText:[NSString stringWithFormat:@"%s",title]];
     [alert setInformativeText:[NSString stringWithFormat:@"%s",message]];
-    [alert setAlertStyle:NSInformationalAlertStyle];
+    [alert setAlertStyle:NSAlertStyleInformational];
     [alert runModal];
 }
 
@@ -543,7 +543,7 @@ int macosx_yesno(const char *title, const char *message) {
     [alert addButtonWithTitle:@"No"];
     [alert setMessageText:[NSString stringWithFormat:@"%s",title]];
     [alert setInformativeText:[NSString stringWithFormat:@"%s",message]];
-    [alert setAlertStyle:NSInformationalAlertStyle];
+    [alert setAlertStyle:NSAlertStyleInformational];
     int res = [alert runModal];
     return res==NSAlertFirstButtonReturn?1:0;
 }
@@ -555,7 +555,7 @@ int macosx_yesnocancel(const char *title, const char *message) {
     [alert addButtonWithTitle:@"Cancel"];
     [alert setMessageText:[NSString stringWithFormat:@"%s",title]];
     [alert setInformativeText:[NSString stringWithFormat:@"%s",message]];
-    [alert setAlertStyle:NSInformationalAlertStyle];
+    [alert setAlertStyle:NSAlertStyleInformational];
     int res = [alert runModal];
     return res==NSAlertFirstButtonReturn?1:(res==NSAlertSecondButtonReturn?0:-1);
 }
