@@ -21,9 +21,9 @@ Useful commands:
 ```
 ./build --list
 ./build --dry-run
-./build --sdl2
+./build
 ./build macos universal
-./build build-debug-g3 --sdl2
+./build build-debug-g3-sdl2
 ```
 
 Use `--profile NAME` (or an exact `build-*` filename) when host autodetection is not appropriate.
@@ -46,7 +46,8 @@ platform linker, preserving the current macOS linker/ABI path while Mach-O and a
 Interactive build configuration
 -------------------------------
 
-Run `./build menuconfig` to choose a persistent build profile/backend, SDL version, and the macOS universal-build setting.
+Run `./build menuconfig` to choose a persistent build profile/backend, compiler toolchain, and the macOS universal-build setting.
+SDL2 is the build baseline for this fork; SDL1 is no longer exposed by the universal build interface.
 The menu previews the resolved backend before it saves, so unsupported combinations are rejected instead of becoming stale build state.
 
 The generated `.dosbox-x-build.conf` file is local working state and is ignored by Git. It contains data only; `./build`
