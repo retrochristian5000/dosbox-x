@@ -33,8 +33,6 @@ export CC CXX LD LD_CXX AR RANLIB CFLAGS CXXFLAGS LDFLAGS
 top=$(pwd)
 if test -z "${top}" ; then exit 1; fi
 
-# fix
-chmod +x vs/sdl/build-scripts/strip_fPIC.sh
 
 echo "Compiling DOSBox-X"
 chmod +x configure

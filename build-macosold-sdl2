@@ -9,8 +9,6 @@
 top=$(pwd)
 if test -z "${top}" ; then exit 1; fi
 
-# fix
-chmod +x vs/sdl/build-scripts/strip_fPIC.sh
 chmod +x vs/sdl2/build-dosbox.sh
 
 orig_CFLAGS="${CFLAGS}"
@@ -89,12 +87,17 @@ for arch in ${architectures}; do
     #CFLAGS="${CFLAGS}${new}"
     #LDFLAGS="${LDFLAGS}${nld}"
     #CPPFLAGS="${CPPFLAGS}${new}"
-    CXXFLAGS="${CXXFLAGS}${new}"
     export CFLAGS LDFLAGS CPPFLAGS CXXFLAGS
 
-    # prefer to compile against our own copy of SDLnet 1.x
-    echo "Compiling our internal SDLnet 1.x"
-    (cd vs/sdlnet && ./build-dosbox.sh) || exit 1
+    # prefer to compile against our own copy of SDL2_net
+    echo "Compiling our internal SDL2_net"
+    chmod +x vs/sdl2net/*.sh
+    (cd vs/sdl2net && ./build-dosbox.sh) || exit 1
+    new="-I${top}/vs/sdl2net/linux-host/include "
+    nld="-L${top}/vs/sdl2net/linux-host/lib "
+    LDFLAGS="${nld}${LDFLAGS}"
+    CPPFLAGS="${new}${CPPFLAGS}"
+    export LDFLAGS CPPFLAGS
 
     # prefer to compile against our own zlib
     #echo "Compiling our internal zlib"

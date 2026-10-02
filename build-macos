@@ -9,8 +9,6 @@
 top=$(pwd)
 if test -z "${top}" ; then exit 1; fi
 
-# fix
-chmod +x vs/sdl/build-scripts/strip_fPIC.sh
 chmod +x vs/sdl2/build-dosbox.sh
 
 orig_CFLAGS="${CFLAGS}"
@@ -27,7 +25,6 @@ do_cleanup() {
     rm -rf vs/zlib/linux-host vs/zlib/linux-build
     rm -rf vs/libpng/linux-host vs/libpng/linux-build
     rm -rf vs/freetype/linux-host vs/freetype/linux-build
-    rm -rf vs/sdlnet/linux-host vs/sdlnet/linux-build
     rm -rf vs/sdl2net/linux-host vs/sdl2net/linux-build
     [ -e Makefile ] && make clean
 }
