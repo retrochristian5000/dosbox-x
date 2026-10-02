@@ -1,43 +1,139 @@
 #!/usr/bin/env bash
 
-# allow 32-bit on 64-bit (x86) builds
-if [ "$1" == "32" ]; then
-    CC="$(which gcc) -m32"
-    CXX="$(which g++) -m32"
-    export CC CXX
-    shift
-    opt="--host=i686-pc-linux-gnu --target=i686-pc-linux-gnu"
-fi
+# One entry point for the existing DOSBox-X build scripts.
+# Platform-specific build logic stays in the build-* backends.
 
-# Jonathan C dev hack: refer to LNKDOS16 in /usr/src/doslib
-doslib=""
-if [ -d /usr/src/doslib ]; then doslib="/usr/src/doslib"; fi
+set -u
 
-if [ -n "${doslib}" ]; then
-    if [ -x "${doslib}/tool/linker/linux-host/lnkdos16" ]; then
-        export PATH="${doslib}/tool/linker/linux-host:${PATH}"
+root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)" || exit 1
+cd "$root" || exit 1
+
+fail() { printf 'build: %s\n' "$*" >&2; exit 2; }
+
+help() {
+    cat <<'EOF_HELP'
+Usage: ./build [options] [profile] [backend arguments...]
+
+Options:
+  -h, --help          Show this help
+  -l, --list          List build backends
+  -n, --dry-run       Show the selected backend without running it
+  -p, --profile NAME  Select a backend/profile
+      --sdl1          Prefer the SDL1 backend
+      --sdl2          Prefer the SDL2 backend
+
+Profiles: auto (default), unix, macos, mingw, emscripten, riscos, hx-dos,
+or any existing build-* filename shown by --list.
+
+Examples:
+  ./build
+  ./build --sdl2
+  ./build macos universal
+  ./build build-debug-g3 --sdl2
+  ./build mingw -- --disable-avcodec
+EOF_HELP
+}
+
+list() {
+    printf '%s\n' 'Profiles: auto unix macos mingw emscripten riscos hx-dos' '' 'Backends:'
+    local f
+    for f in "$root"/build-*; do
+        [ -f "$f" ] && basename -- "$f"
+    done | LC_ALL=C sort
+}
+
+map_profile() {
+    case "$1" in
+        auto)       printf '%s\n' auto ;;
+        unix)       printf '%s\n' build-unix ;;
+        macos)      printf '%s\n' build-macos ;;
+        mingw)      printf '%s\n' build-mingw ;;
+        emscripten) printf '%s\n' build-emscripten-sdl2 ;;
+        riscos)     printf '%s\n' build-riscos ;;
+        hx-dos)     printf '%s\n' build-mingw-hx-dos ;;
+        build-*)    printf '%s\n' "$1" ;;
+        *)          return 1 ;;
+    esac
+}
+
+auto_backend() {
+    case "$(uname -s 2>/dev/null)" in
+        Darwin)                                  printf '%s\n' build-macos ;;
+        MINGW*|MSYS*|CYGWIN*)                    printf '%s\n' build-mingw ;;
+        Linux|FreeBSD|OpenBSD|NetBSD|DragonFly|SunOS)
+                                                printf '%s\n' build-unix ;;
+        RISCOS*)                                 printf '%s\n' build-riscos ;;
+        *) fail "unknown host; use --profile or a build-* backend" ;;
+    esac
+}
+
+pick_sdl() {
+    local backend="$1" want="$2" candidate
+    [ "$want" = auto ] && { printf '%s\n' "$backend"; return; }
+
+    if [ "$want" = 2 ]; then
+        case "$backend" in
+            build-sdl2|*-sdl2) candidate="$backend" ;;
+            build-unix)        candidate=build-sdl2 ;;
+            *)                 candidate="${backend}-sdl2" ;;
+        esac
+    else
+        case "$backend" in
+            build-sdl2) candidate=build-unix ;;
+            *-sdl2)     candidate="${backend%-sdl2}" ;;
+            *)          candidate="$backend" ;;
+        esac
     fi
+
+    [ -f "$root/$candidate" ] || fail "no SDL${want} partner for '$backend'"
+    printf '%s\n' "$candidate"
+}
+
+profile=auto
+profile_set=0
+sdl=auto
+dry=0
+args=()
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -h|--help|help) help; exit 0 ;;
+        -l|--list|list) list; exit 0 ;;
+        -n|--dry-run) dry=1; shift ;;
+        --sdl1) sdl=1; shift ;;
+        --sdl2) sdl=2; shift ;;
+        -p|--profile)
+            [ "$#" -ge 2 ] || fail "$1 needs a name"
+            profile="$2"; profile_set=1; shift 2 ;;
+        --profile=*)
+            profile="${1#*=}"; [ -n "$profile" ] || fail '--profile needs a name'
+            profile_set=1; shift ;;
+        --) shift; args+=("$@"); break ;;
+        *)
+            if [ "$profile_set" -eq 0 ] && map_profile "$1" >/dev/null 2>&1; then
+                profile="$1"; profile_set=1; shift
+            else
+                args+=("$@"); break
+            fi
+            ;;
+    esac
+done
+
+backend="$(map_profile "$profile")" || fail "unknown profile '$profile'"
+[ "$backend" = auto ] && { backend="$(auto_backend)" || exit $?; }
+backend="$(pick_sdl "$backend" "$sdl")" || exit $?
+[ -f "$root/$backend" ] || fail "backend '$backend' does not exist"
+
+printf 'DOSBox-X build backend: %s\n' "$backend"
+if [ "$dry" -eq 1 ]; then
+    printf 'Command:'; printf ' %q' "$backend" "${args[@]}"; printf '\n'
+    exit 0
 fi
 
-# I'm sick and tired of all the churn the three versions of autoconf
-# are causing in this repo. Stop committing the configure scripts
-# and just autoregen.
-./autogen.sh || exit 1
-
-# fix
-chmod +x vs/sdl/build-scripts/strip_fPIC.sh
-
-# prefer to compile against our own copy of SDL 1.x
-echo "Compiling our internal SDL 1.x"
-(cd vs/sdl && ./build-dosbox.sh) || exit 1
-
-# prefer to compile against our own copy of SDLnet 1.x
-echo "Compiling our internal SDLnet 1.x"
-(cd vs/sdlnet && ./build-dosbox.sh) || exit 1
-
-# now compile ourself
-echo "Compiling DOSBox-X"
-chmod +x configure
-./configure --enable-debug --prefix=/usr "${@}" "${opt}" || exit 1
-make -j3 || exit 1
-
+case "$backend" in
+    *.cmd|*.bat)
+        command -v cmd.exe >/dev/null 2>&1 || fail "'$backend' requires cmd.exe"
+        exec cmd.exe /d /c "$backend" "${args[@]}"
+        ;;
+    *) exec bash "$root/$backend" "${args[@]}" ;;
+esac

@@ -9,6 +9,27 @@ Released builds are available from the [Releases](https://github.com/joncampbell
 For instructions on installing and using DOSBox-X, please look at the
 [INSTALL](INSTALL.md) page and the [DOSBox-X Wiki](https://dosbox-x.com/wiki).
 
+Universal build entry point
+---------------------------
+
+This fork provides `./build` as a single front door for the existing platform-specific build scripts.
+With no profile, it detects common Unix, macOS, and MinGW/MSYS hosts and dispatches to the matching backend.
+The specialized `build-*` scripts remain the source of their platform-specific compiler and configure logic.
+
+Useful commands:
+
+```
+./build --list
+./build --dry-run
+./build --sdl2
+./build macos universal
+./build build-debug-g3 --sdl2
+```
+
+Use `--profile NAME` (or an exact `build-*` filename) when host autodetection is not appropriate.
+Arguments after the profile are passed through to the selected backend; `--` may be used to end wrapper option parsing.
+The native Visual Studio workflow remains available through `./vs/dosbox-x.sln`.
+
 General information on source code compilation
 ----------------------------------------------
 
