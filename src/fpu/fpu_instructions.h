@@ -91,7 +91,7 @@ static void FPU_F2XM1(void){
 #else
 # include <math.h>
 # include <cmath>
-# define isdenormal(x) (!std::isnormal(x))
+# define isdenormal(x) (std::fpclassify(x) == FP_SUBNORMAL)
 #endif
 
 static void FPU_FADD(Bitu op1, Bitu op2){
@@ -515,38 +515,16 @@ static void FPU_FSTENV(PhysPt addr, bool op16){
 	fpu.cw = fpu.cw.allMasked();
 }
 
-// WARNING: UNTESTED. Original contributed code only focused on the x86 FPU case.
 static void FPU_FSTT_I16(PhysPt addr) {
-	double val = fpu.regs[TOP].d; /* chop rounding mode */
-	mem_writew(addr,(val < 32768.0 && val >= -32768.0)?static_cast<int16_t>(val):0x8000);
-	FPU_FPOP();
+    FPU_FSTT_I16_Soft(addr);
 }
 
-// WARNING: UNTESTED. Original contributed code only focused on the x86 FPU case.
 static void FPU_FSTT_I32(PhysPt addr) {
-	double val = fpu.regs[TOP].d; /* chop rounding mode */
-	mem_writed(addr,(val < 2147483648.0 && val >= -2147483648.0)?static_cast<int32_t>(val):0x80000000);
-	FPU_FPOP();
+    FPU_FSTT_I32_Soft(addr);
 }
 
-// WARNING: UNTESTED. Original contributed code only focused on the x86 FPU case.
 static void FPU_FSTT_I64(PhysPt addr) {
-	FPU_Reg blah;
-	if (fpu.use80[TOP] && (fpu.regs_80[TOP].raw.h & 0x7FFFu) == (0x0000u + FPU_Reg_80_exponent_bias + 63u)) {
-		// FIXME: This works so far for DOS demos that use the "Pentium memcpy trick" to copy 64 bits at a time.
-		//        What this code needs to do is take the exponent into account and then clamp the 64-bit int within range.
-		//        This cheap hack is good enough for now.
-		mem_writed(addr,(uint32_t)(fpu.regs_80[TOP].raw.l));
-		mem_writed(addr+4,(uint32_t)(fpu.regs_80[TOP].raw.l >> (uint64_t)32));
-	}
-	else {
-		double val = fpu.regs[TOP].d; /* chop rounding mode */
-		blah.ll = (val < 9223372036854775808.0 && val >= -9223372036854775808.0)?static_cast<int64_t>(val):LONGTYPE(0x8000000000000000);
-
-		mem_writed(addr,(uint32_t)blah.l.lower);
-		mem_writed(addr+4,(uint32_t)blah.l.upper);
-	}
-	FPU_FPOP();
+    FPU_FSTT_I64_Soft(addr);
 }
 
 static void FPU_FSUB(Bitu st, Bitu other){

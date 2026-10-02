@@ -95,22 +95,16 @@ static void FPU_ST80(PhysPt addr,Bitu reg) {
     mem_writew(addr+8ul,fpu.regs_80[reg].raw.h);
 }
 
-// WARNING: UNTESTED. Original contributed code only focused on the x86 FPU case.
 static void FPU_FSTT_I16(PhysPt addr) {
-	mem_writew(addr,(uint16_t)static_cast<int16_t>(fpu.regs_80[TOP].v));
-	FPU_FPOP();
+    FPU_FSTT_I16_Soft(addr);
 }
 
-// WARNING: UNTESTED. Original contributed code only focused on the x86 FPU case.
 static void FPU_FSTT_I32(PhysPt addr) {
-	mem_writed(addr,(uint32_t)static_cast<int32_t>(fpu.regs_80[TOP].v));
-	FPU_FPOP();
+    FPU_FSTT_I32_Soft(addr);
 }
 
-// WARNING: UNTESTED. Original contributed code only focused on the x86 FPU case.
 static void FPU_FSTT_I64(PhysPt addr) {
-	mem_writeq(addr,(uint64_t)static_cast<int64_t>(fpu.regs_80[TOP].v));
-	FPU_FPOP();
+    FPU_FSTT_I64_Soft(addr);
 }
 
 #if defined(WIN32) && defined(_MSC_VER) && (_MSC_VER < 1910)
@@ -122,7 +116,7 @@ static void FPU_FSTT_I64(PhysPt addr) {
 #else
 # include <math.h>
 # include <cmath>
-# define isdenormal(x) (!std::isnormal(x))
+# define isdenormal(x) (std::fpclassify(x) == FP_SUBNORMAL)
 #endif
 
 static void FPU_FADD(Bitu op1, Bitu op2){

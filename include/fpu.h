@@ -102,6 +102,9 @@ void FPU_FST_F80(PhysPt addr);
 void FPU_FST_I16(PhysPt addr);
 void FPU_FST_I32(PhysPt addr);
 void FPU_FST_I64(PhysPt addr);
+void FPU_FSTT_I16_Soft(PhysPt addr);
+void FPU_FSTT_I32_Soft(PhysPt addr);
+void FPU_FSTT_I64_Soft(PhysPt addr);
 
 static INLINE void FPU_SetTag(uint16_t tags){
 	for (auto i=0; i<8; i++)

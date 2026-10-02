@@ -247,7 +247,8 @@ F64ConversionResult convertToF64(const FPU_Reg_80& val)
 namespace {
 
 IntegerConversionResult convertToInteger(const FPU_Reg_80& val,
-                                         unsigned int target_bits)
+                                         unsigned int target_bits,
+                                         FPUControlWord::RoundMode round_mode)
 {
     constexpr uint64_t extended_integer_bit = 0x8000'0000'0000'0000ULL;
 
@@ -298,21 +299,21 @@ IntegerConversionResult convertToInteger(const FPU_Reg_80& val,
             const auto half = 1ULL << (shift - 1);
             const auto remainder = significand & ((half << 1) - 1);
             inexact = remainder != 0;
-            if (fpu.cw.RC == FPUControlWord::RoundMode::Nearest) {
+            if (round_mode == FPUControlWord::RoundMode::Nearest) {
                 round_up = remainder > half ||
                            (remainder == half && (magnitude & 1));
             }
         } else {
             inexact = true;
-            if (fpu.cw.RC == FPUControlWord::RoundMode::Nearest && shift == 64)
+            if (round_mode == FPUControlWord::RoundMode::Nearest && shift == 64)
                 round_up = significand > extended_integer_bit;
         }
     }
 
     if (inexact) {
-        if (fpu.cw.RC == FPUControlWord::RoundMode::Down)
+        if (round_mode == FPUControlWord::RoundMode::Down)
             round_up = sign;
-        else if (fpu.cw.RC == FPUControlWord::RoundMode::Up)
+        else if (round_mode == FPUControlWord::RoundMode::Up)
             round_up = !sign;
         magnitude += static_cast<uint64_t>(round_up);
     }
@@ -340,17 +341,38 @@ IntegerConversionResult convertToInteger(const FPU_Reg_80& val,
 
 IntegerConversionResult convertToI16(const FPU_Reg_80& val)
 {
-    return convertToInteger(val, 15);
+    const auto round_mode = static_cast<FPUControlWord::RoundMode>(
+            static_cast<unsigned>(fpu.cw.RC));
+    return convertToInteger(val, 15, round_mode);
 }
 
 IntegerConversionResult convertToI32(const FPU_Reg_80& val)
 {
-    return convertToInteger(val, 31);
+    const auto round_mode = static_cast<FPUControlWord::RoundMode>(
+            static_cast<unsigned>(fpu.cw.RC));
+    return convertToInteger(val, 31, round_mode);
 }
 
 IntegerConversionResult convertToI64(const FPU_Reg_80& val)
 {
-    return convertToInteger(val, 63);
+    const auto round_mode = static_cast<FPUControlWord::RoundMode>(
+            static_cast<unsigned>(fpu.cw.RC));
+    return convertToInteger(val, 63, round_mode);
+}
+
+IntegerConversionResult convertToI16Trunc(const FPU_Reg_80& val)
+{
+    return convertToInteger(val, 15, FPUControlWord::RoundMode::Chop);
+}
+
+IntegerConversionResult convertToI32Trunc(const FPU_Reg_80& val)
+{
+    return convertToInteger(val, 31, FPUControlWord::RoundMode::Chop);
+}
+
+IntegerConversionResult convertToI64Trunc(const FPU_Reg_80& val)
+{
+    return convertToInteger(val, 63, FPUControlWord::RoundMode::Chop);
 }
 
 double convertToDouble(const FPU_Reg_80& val)

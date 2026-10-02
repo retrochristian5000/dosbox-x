@@ -563,6 +563,55 @@ void FPU_FST_I32(PhysPt addr)
     mem_writed(addr, static_cast<uint32_t>(conversion.value));
 }
 
+
+void FPU_FSTT_I16_Soft(PhysPt addr)
+{
+    fpu_StackValid(TOP);
+    FPU_Reg_80 value = {};
+    fpu_GetST80(value);
+    const auto conversion = float80::convertToI16Trunc(value);
+    fpu.sw.C1 = conversion.rounded_up;
+
+    if (conversion.exceptions) {
+        FPU_SetException(conversion.exceptions);
+        fpu_RaiseException();
+    }
+
+    mem_writew(addr, static_cast<uint16_t>(conversion.value));
+}
+
+void FPU_FSTT_I32_Soft(PhysPt addr)
+{
+    fpu_StackValid(TOP);
+    FPU_Reg_80 value = {};
+    fpu_GetST80(value);
+    const auto conversion = float80::convertToI32Trunc(value);
+    fpu.sw.C1 = conversion.rounded_up;
+
+    if (conversion.exceptions) {
+        FPU_SetException(conversion.exceptions);
+        fpu_RaiseException();
+    }
+
+    mem_writed(addr, static_cast<uint32_t>(conversion.value));
+}
+
+void FPU_FSTT_I64_Soft(PhysPt addr)
+{
+    fpu_StackValid(TOP);
+    FPU_Reg_80 value = {};
+    fpu_GetST80(value);
+    const auto conversion = float80::convertToI64Trunc(value);
+    fpu.sw.C1 = conversion.rounded_up;
+
+    if (conversion.exceptions) {
+        FPU_SetException(conversion.exceptions);
+        fpu_RaiseException();
+    }
+
+    mem_writeq(addr, static_cast<uint64_t>(conversion.value));
+}
+
 void FPU_FBST(PhysPt addr)
 {
     constexpr uint64_t bcd_max = 999'999'999'999'999'999ULL;
