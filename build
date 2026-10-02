@@ -7,12 +7,14 @@ set -u
 
 root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)" || exit 1
 cd "$root" || exit 1
+config_file="$root/.dosbox-x-build.conf"
 
 fail() { printf 'build: %s\n' "$*" >&2; exit 2; }
 
 help() {
     cat <<'EOF_HELP'
 Usage: ./build [options] [profile] [backend arguments...]
+       ./build menuconfig
 
 Options:
   -h, --help          Show this help
@@ -21,14 +23,19 @@ Options:
   -p, --profile NAME  Select a backend/profile
       --sdl1          Prefer the SDL1 backend
       --sdl2          Prefer the SDL2 backend
+      --universal     Request a macOS universal build
+      --no-universal  Disable a configured macOS universal build
+      --no-config     Ignore .dosbox-x-build.conf
+      --show-config   Show the effective saved settings
 
 Profiles: auto (default), unix, macos, mingw, emscripten, riscos, hx-dos,
 or any existing build-* filename shown by --list.
 
 Examples:
+  ./build menuconfig
   ./build
   ./build --sdl2
-  ./build macos universal
+  ./build macos --universal
   ./build build-debug-g3 --sdl2
   ./build mingw -- --disable-avcodec
 EOF_HELP
@@ -89,11 +96,54 @@ pick_sdl() {
     printf '%s\n' "$candidate"
 }
 
+load_config() {
+    [ -f "$config_file" ] || return 0
+    local key value
+    while IFS='=' read -r key value || [ -n "${key:-}" ]; do
+        case "$key" in
+            ''|'#'*) continue ;;
+            profile)
+                map_profile "$value" >/dev/null || fail "invalid profile in $config_file: $value"
+                profile="$value"
+                ;;
+            sdl)
+                case "$value" in auto|1|2) sdl="$value" ;; *) fail "invalid SDL value in $config_file: $value" ;; esac
+                ;;
+            macos_universal)
+                case "$value" in 0|1) macos_universal="$value" ;; *) fail "invalid macos_universal value in $config_file: $value" ;; esac
+                ;;
+            *) fail "unknown key in $config_file: $key" ;;
+        esac
+    done < "$config_file"
+}
+
+show_config() {
+    printf 'Config file: %s\n' "$config_file"
+    if [ -f "$config_file" ]; then
+        printf 'profile=%s\nsdl=%s\nmacos_universal=%s\n' "$profile" "$sdl" "$macos_universal"
+    else
+        printf '(not created; built-in defaults are active)\n'
+        printf 'profile=%s\nsdl=%s\nmacos_universal=%s\n' "$profile" "$sdl" "$macos_universal"
+    fi
+}
+
+case "${1:-}" in
+    menuconfig|--menuconfig) exec bash "$root/menuconfig" ;;
+esac
+
 profile=auto
 profile_set=0
 sdl=auto
+macos_universal=0
 dry=0
+show_saved=0
 args=()
+use_config=1
+
+for arg in "$@"; do
+    [ "$arg" = --no-config ] && use_config=0
+done
+[ "$use_config" -eq 1 ] && load_config
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -102,6 +152,10 @@ while [ "$#" -gt 0 ]; do
         -n|--dry-run) dry=1; shift ;;
         --sdl1) sdl=1; shift ;;
         --sdl2) sdl=2; shift ;;
+        --universal) macos_universal=1; shift ;;
+        --no-universal) macos_universal=0; shift ;;
+        --no-config) shift ;;
+        --show-config) show_saved=1; shift ;;
         -p|--profile)
             [ "$#" -ge 2 ] || fail "$1 needs a name"
             profile="$2"; profile_set=1; shift 2 ;;
@@ -119,10 +173,24 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
+[ "$show_saved" -eq 1 ] && { show_config; [ "$dry" -eq 0 ] && exit 0; }
+
 backend="$(map_profile "$profile")" || fail "unknown profile '$profile'"
 [ "$backend" = auto ] && { backend="$(auto_backend)" || exit $?; }
 backend="$(pick_sdl "$backend" "$sdl")" || exit $?
 [ -f "$root/$backend" ] || fail "backend '$backend' does not exist"
+
+if [ "$macos_universal" -eq 1 ]; then
+    case "$backend" in
+        build-macos|build-macos-sdl2)
+            have_universal=0
+            for arg in "${args[@]}"; do
+                [ "$arg" = universal ] && have_universal=1
+            done
+            [ "$have_universal" -eq 1 ] || args=(universal "${args[@]}")
+            ;;
+    esac
+fi
 
 printf 'DOSBox-X build backend: %s\n' "$backend"
 if [ "$dry" -eq 1 ]; then
@@ -137,3 +205,4 @@ case "$backend" in
         ;;
     *) exec bash "$root/$backend" "${args[@]}" ;;
 esac
+@

@@ -30,6 +30,16 @@ Use `--profile NAME` (or an exact `build-*` filename) when host autodetection is
 Arguments after the profile are passed through to the selected backend; `--` may be used to end wrapper option parsing.
 The native Visual Studio workflow remains available through `./vs/dosbox-x.sln`.
 
+Interactive build configuration
+-------------------------------
+
+Run `./build menuconfig` to choose a persistent build profile/backend, SDL version, and the macOS universal-build setting.
+The menu previews the resolved backend before it saves, so unsupported combinations are rejected instead of becoming stale build state.
+
+The generated `.dosbox-x-build.conf` file is local working state and is ignored by Git. It contains data only; `./build`
+parses and validates the values rather than sourcing the file as shell code. Command-line options override the saved settings,
+and `./build --no-config` bypasses them completely.
+
 General information on source code compilation
 ----------------------------------------------
 
