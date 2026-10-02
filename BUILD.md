@@ -30,6 +30,19 @@ Use `--profile NAME` (or an exact `build-*` filename) when host autodetection is
 Arguments after the profile are passed through to the selected backend; `--` may be used to end wrapper option parsing.
 The native Visual Studio workflow remains available through `./vs/dosbox-x.sln`.
 
+Pinned LLVM toolchain
+---------------------
+
+This fork carries the WHP LLVM fork as a pinned submodule at `toolchains/llvm-project`, matching the QEMU fork's toolchain layout.
+The gitlink is the revision authority; builds do not clone or float to the current LLVM branch tip.
+
+Run `./build llvm-bootstrap` to build the pinned native compiler explicitly, or pass `--llvm` to any supported Unix/macOS
+build so the universal launcher bootstraps or reuses it automatically. Generated LLVM state lives under `.build/llvm-native`
+because the repository already uses `build` as the public launcher filename. The host compiler remains the default.
+
+The LLVM path exports Clang plus LLVM archive/binutils tools to the existing DOSBox-X backend. It does not force LLD as the
+platform linker, preserving the current macOS linker/ABI path while Mach-O and arm64e work continues.
+
 Interactive build configuration
 -------------------------------
 

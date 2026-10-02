@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 # Do you like Clang/LLVM? Use this script to build DOSBox-X!
-CC=$(which clang)
-CXX=$(which clang++)
-CPP=$(which clang-cpp)
+CC="${CC:-$(which clang)}"
+CXX="${CXX:-$(which clang++)}"
+CPP="${CPP:-$(which clang-cpp)}"
 export CC CXX CPP
 
 # allow 32-bit on 64-bit (x86) builds

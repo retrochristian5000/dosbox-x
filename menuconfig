@@ -12,6 +12,7 @@ config_file="$root/.dosbox-x-build.conf"
 profile=auto
 sdl=auto
 macos_universal=0
+compiler=system
 
 warn() { printf 'menuconfig: %s\n' "$*" >&2; }
 
@@ -34,6 +35,9 @@ load_config() {
             macos_universal)
                 case "$value" in 0|1) macos_universal="$value" ;; *) warn "ignoring invalid macos_universal value '$value'" ;; esac
                 ;;
+            toolchain)
+                case "$value" in system|llvm) compiler="$value" ;; *) warn "ignoring invalid toolchain value '$value'" ;; esac
+                ;;
             *) warn "ignoring unknown key '$key'" ;;
         esac
     done < "$config_file"
@@ -45,6 +49,23 @@ sdl_name() {
 
 universal_name() {
     [ "$macos_universal" -eq 1 ] && printf 'yes' || printf 'no'
+}
+
+toolchain_name() {
+    case "$compiler" in
+        system) printf 'system compiler' ;;
+        llvm) printf 'pinned WHP LLVM' ;;
+    esac
+}
+
+choose_toolchain() {
+    local reply
+    printf '\nCompiler toolchain (current: %s)\n  1) system compiler\n  2) pinned WHP LLVM\nSelect (Enter keeps current): ' "$(toolchain_name)"
+    IFS= read -r reply
+    case "$reply" in
+        1) compiler=system ;;
+        2) compiler=llvm ;;
+    esac
 }
 
 choose_profile() {
@@ -82,6 +103,10 @@ build_preview_command() {
     else
         preview+=(--no-universal)
     fi
+    case "$compiler" in
+        system) preview+=(--system-compiler) ;;
+        llvm) preview+=(--llvm) ;;
+    esac
 }
 
 preview_config() {
@@ -104,6 +129,7 @@ save_config() {
         printf 'profile=%s\n' "$profile"
         printf 'sdl=%s\n' "$sdl"
         printf 'macos_universal=%s\n' "$macos_universal"
+        printf 'toolchain=%s\n' "$compiler"
     } > "$tmp" || { rm -f "$tmp"; return 1; }
     mv -f "$tmp" "$config_file" || { rm -f "$tmp"; return 1; }
     printf 'Saved %s\n' "$config_file"
@@ -113,6 +139,7 @@ reset_config() {
     profile=auto
     sdl=auto
     macos_universal=0
+    compiler=system
 }
 
 [ -t 0 ] && [ -t 1 ] || { warn 'an interactive terminal is required'; exit 2; }
@@ -123,23 +150,26 @@ while :; do
     printf '  profile/backend:  %s\n' "$profile"
     printf '  SDL:              %s\n' "$(sdl_name)"
     printf '  macOS universal:  %s\n' "$(universal_name)"
+    printf '  compiler:         %s\n' "$(toolchain_name)"
     printf '\n'
     printf '  1) Build profile/backend\n'
     printf '  2) SDL version\n'
     printf '  3) Toggle macOS universal\n'
-    printf '  4) Preview resolved build\n'
-    printf '  5) Save and exit\n'
-    printf '  6) Reset to defaults\n'
-    printf '  7) Exit without saving\n'
+    printf '  4) Compiler toolchain\n'
+    printf '  5) Preview resolved build\n'
+    printf '  6) Save and exit\n'
+    printf '  7) Reset to defaults\n'
+    printf '  8) Exit without saving\n'
     printf 'Select: '
     IFS= read -r choice
     case "$choice" in
         1) choose_profile ;;
         2) choose_sdl ;;
         3) [ "$macos_universal" -eq 1 ] && macos_universal=0 || macos_universal=1 ;;
-        4) preview_config || true ;;
-        5) save_config && exit 0 ;;
-        6) reset_config ;;
-        7) exit 0 ;;
+        4) choose_toolchain ;;
+        5) preview_config || true ;;
+        6) save_config && exit 0 ;;
+        7) reset_config ;;
+        8) exit 0 ;;
     esac
 done

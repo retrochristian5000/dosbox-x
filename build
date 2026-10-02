@@ -27,6 +27,9 @@ Options:
       --no-universal  Disable a configured macOS universal build
       --no-config     Ignore .dosbox-x-build.conf
       --show-config   Show the effective saved settings
+      --llvm          Build with the pinned WHP LLVM toolchain
+      --system-compiler
+                      Use the host compiler (default)
 
 Profiles: auto (default), unix, macos, mingw, emscripten, riscos, hx-dos,
 or any existing build-* filename shown by --list.
@@ -35,6 +38,8 @@ Examples:
   ./build menuconfig
   ./build
   ./build --sdl2
+  ./build --llvm --sdl2
+  ./build llvm-bootstrap
   ./build macos --universal
   ./build build-debug-g3 --sdl2
   ./build mingw -- --disable-avcodec
@@ -112,6 +117,9 @@ load_config() {
             macos_universal)
                 case "$value" in 0|1) macos_universal="$value" ;; *) fail "invalid macos_universal value in $config_file: $value" ;; esac
                 ;;
+            toolchain)
+                case "$value" in system|llvm) compiler="$value" ;; *) fail "invalid toolchain value in $config_file: $value" ;; esac
+                ;;
             *) fail "unknown key in $config_file: $key" ;;
         esac
     done < "$config_file"
@@ -120,21 +128,23 @@ load_config() {
 show_config() {
     printf 'Config file: %s\n' "$config_file"
     if [ -f "$config_file" ]; then
-        printf 'profile=%s\nsdl=%s\nmacos_universal=%s\n' "$profile" "$sdl" "$macos_universal"
+        printf 'profile=%s\nsdl=%s\nmacos_universal=%s\ntoolchain=%s\n' "$profile" "$sdl" "$macos_universal" "$compiler"
     else
         printf '(not created; built-in defaults are active)\n'
-        printf 'profile=%s\nsdl=%s\nmacos_universal=%s\n' "$profile" "$sdl" "$macos_universal"
+        printf 'profile=%s\nsdl=%s\nmacos_universal=%s\ntoolchain=%s\n' "$profile" "$sdl" "$macos_universal" "$compiler"
     fi
 }
 
 case "${1:-}" in
     menuconfig|--menuconfig) exec bash "$root/menuconfig" ;;
+    llvm-bootstrap|--llvm-bootstrap) exec bash "$root/scripts/bootstrap-native-llvm.bash" ;;
 esac
 
 profile=auto
 profile_set=0
 sdl=auto
 macos_universal=0
+compiler=system
 dry=0
 show_saved=0
 args=()
@@ -156,6 +166,8 @@ while [ "$#" -gt 0 ]; do
         --no-universal) macos_universal=0; shift ;;
         --no-config) shift ;;
         --show-config) show_saved=1; shift ;;
+        --llvm) compiler=llvm; shift ;;
+        --system-compiler) compiler=system; shift ;;
         -p|--profile)
             [ "$#" -ge 2 ] || fail "$1 needs a name"
             profile="$2"; profile_set=1; shift 2 ;;
@@ -192,10 +204,37 @@ if [ "$macos_universal" -eq 1 ]; then
     esac
 fi
 
+if [ "$compiler" = llvm ]; then
+    case "$backend" in
+        build-mingw*|build-riscos|build-emscripten*|build-os2*)
+            fail "the pinned native LLVM toolchain is not wired to backend '$backend'"
+            ;;
+    esac
+    [ "${args[0]:-}" != 32 ] || fail "the pinned native LLVM path does not currently support the legacy 32-bit shortcut"
+fi
+
 printf 'DOSBox-X build backend: %s\n' "$backend"
+printf 'DOSBox-X compiler: %s\n' "$compiler"
 if [ "$dry" -eq 1 ]; then
     printf 'Command:'; printf ' %q' "$backend" "${args[@]}"; printf '\n'
     exit 0
+fi
+
+if [ "$compiler" = llvm ]; then
+    llvm_dir="$(bash "$root/scripts/bootstrap-native-llvm.bash")" || exit $?
+    [ -x "$llvm_dir/bin/clang" ] && [ -x "$llvm_dir/bin/clang++" ] ||
+        fail "LLVM bootstrap did not provide clang/clang++: $llvm_dir"
+    CC="$llvm_dir/bin/clang"
+    CXX="$llvm_dir/bin/clang++"
+    export CC CXX
+    [ ! -x "$llvm_dir/bin/clang-cpp" ] || { CPP="$llvm_dir/bin/clang-cpp"; export CPP; }
+    AR="$llvm_dir/bin/llvm-ar"
+    RANLIB="$llvm_dir/bin/llvm-ranlib"
+    NM="$llvm_dir/bin/llvm-nm"
+    STRIP="$llvm_dir/bin/llvm-strip"
+    OBJCOPY="$llvm_dir/bin/llvm-objcopy"
+    OBJDUMP="$llvm_dir/bin/llvm-objdump"
+    export AR RANLIB NM STRIP OBJCOPY OBJDUMP
 fi
 
 case "$backend" in
