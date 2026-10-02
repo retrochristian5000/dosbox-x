@@ -9,8 +9,6 @@
 top=$(pwd)
 if test -z "${top}" ; then exit 1; fi
 
-# fix
-chmod +x vs/sdl/build-scripts/strip_fPIC.sh
 
 if [ -f ${MSYSTEM_PREFIX}/i686-7.3.0-release-posix-dwarf-rt_v5-rev0.txt ] ; then
  echo "set flags for lowend build"
