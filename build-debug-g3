@@ -13,8 +13,10 @@ fi
 # and just autoregen.
 ./autogen.sh || exit 1
 
-# fix
-chmod +x vs/sdl/build-scripts/strip_fPIC.sh
+# where are we?
+top="$(pwd)"
+[ -n "$top" ] || exit 1
+
 
 chmod +x configure
 
@@ -33,9 +35,15 @@ if test -z "${x}" ; then
     (cd vs/sdl2 && ./build-dosbox.sh) || exit 1
 fi
 
-# prefer to compile against our own copy of SDLnet 1.x
-echo "Compiling our internal SDLnet 1.x"
-(cd vs/sdlnet && ./build-dosbox.sh) || exit 1
+# prefer to compile against our own copy of SDL2_net
+echo "Compiling our internal SDL2_net"
+chmod +x vs/sdl2net/*.sh
+(cd vs/sdl2net && ./build-dosbox.sh) || exit 1
+new="-I${top}/vs/sdl2net/linux-host/include "
+nld="-L${top}/vs/sdl2net/linux-host/lib "
+LDFLAGS="${nld}${LDFLAGS}"
+CPPFLAGS="${new}${CPPFLAGS}"
+export LDFLAGS CPPFLAGS
 
 # now compile ourself
 echo "Compiling DOSBox-X"

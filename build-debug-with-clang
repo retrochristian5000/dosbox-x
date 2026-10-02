@@ -1,39 +1,12 @@
 #!/usr/bin/env bash
+set -e
 
-# Do you like Clang/LLVM? Use this script to build DOSBox-X!
-CC="${CC:-$(which clang)}"
-CXX="${CXX:-$(which clang++)}"
-CPP="${CPP:-$(which clang-cpp)}"
-export CC CXX CPP
-
-# allow 32-bit on 64-bit (x86) builds
-if [ "${1}" == "32" ]; then
-    CC="$(which clang) -m32"
-    CXX="$(which clang++) -m32"
-    export CC CXX
-    shift
-    opt="--host=i686-pc-linux-gnu --target=i686-pc-linux-gnu"
+root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+CC="${CC:-$(command -v clang)}"
+CXX="${CXX:-$(command -v clang++)}"
+export CC CXX
+if command -v clang-cpp >/dev/null 2>&1; then
+    CPP="${CPP:-$(command -v clang-cpp)}"
+    export CPP
 fi
-
-# I'm sick and tired of all the churn the three versions of autoconf
-# are causing in this repo. Stop committing the configure scripts
-# and just autoregen.
-./autogen.sh || exit 1
-
-# fix
-chmod +x vs/sdl/build-scripts/strip_fPIC.sh
-
-# prefer to compile against our own copy of SDL 1.x
-echo "Compiling our internal SDL 1.x"
-(cd vs/sdl && ./build-dosbox.sh) || exit 1
-
-# prefer to compile against our own copy of SDLnet 1.x
-echo "Compiling our internal SDLnet 1.x"
-(cd vs/sdlnet && ./build-dosbox.sh) || exit 1
-
-# now compile ourself
-echo "Compiling DOSBox-X"
-chmod +x configure
-./configure --enable-debug=heavy --prefix=/usr "${@}" "${opt}" || exit 1
-make -j3 || exit 1
-
+exec bash "$root/build-debug" "$@"
