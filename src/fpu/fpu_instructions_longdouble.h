@@ -16,11 +16,32 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include <cfenv> /* for std::feholdexcept */
+#include <cfenv> /* for std::feholdexcept, std::fesetenv */
 #include <cmath> /* for isinf, etc */
 
 #include "cpu/lazyflags.h"
 #include "fpu.h"
+
+class FPUHostFenvGuard {
+public:
+    FPUHostFenvGuard()
+    {
+        std::feholdexcept(&env);
+    }
+
+    ~FPUHostFenvGuard()
+    {
+        // Guest x87 exceptions belong in the emulated status word, not in the
+        // host process. Restore the saved environment without re-raising them.
+        std::fesetenv(&env);
+    }
+
+    FPUHostFenvGuard(const FPUHostFenvGuard&) = delete;
+    FPUHostFenvGuard& operator=(const FPUHostFenvGuard&) = delete;
+
+private:
+    fenv_t env = {};
+};
 
 static inline uint16_t FPU_GetTag()
 {
@@ -120,8 +141,7 @@ static void FPU_FSTT_I64(PhysPt addr) {
 #endif
 
 static void FPU_FADD(Bitu op1, Bitu op2){
-	fenv_t buf;
-	std::feholdexcept(&buf);
+	FPUHostFenvGuard host_fenv;
 	// HACK: Set the denormal flag according to whether the source or final result is a denormalized number.
 	//       This is vital if we don't want certain DOS programs to mis-detect our FPU emulation as an IIT clone chip when cputype == 286
 	bool was_not_normal = isdenormal(fpu.regs_80[op1].v);
@@ -155,8 +175,7 @@ static void FPU_FCOS(void){
 }
 
 static void FPU_FSQRT(void){
-	fenv_t buf;
-	std::feholdexcept(&buf);
+	FPUHostFenvGuard host_fenv;
 	fpu.regs_80[TOP].v = sqrtl(fpu.regs_80[TOP].v);
 	//flags and such :)
 	return;
@@ -175,40 +194,35 @@ static void FPU_FPTAN(void){
 	return;
 }
 static void FPU_FDIV(Bitu st, Bitu other){
-	fenv_t buf;
-	std::feholdexcept(&buf);
+	FPUHostFenvGuard host_fenv;
 	fpu.regs_80[st].v = fpu.regs_80[st].v/fpu.regs_80[other].v;
 	//flags and such :)
 	return;
 }
 
 static void FPU_FDIVR(Bitu st, Bitu other){
-	fenv_t buf;
-	std::feholdexcept(&buf);
+	FPUHostFenvGuard host_fenv;
 	fpu.regs_80[st].v = fpu.regs_80[other].v/fpu.regs_80[st].v;
 	// flags and such :)
 	return;
 }
 
 static void FPU_FMUL(Bitu st, Bitu other){
-	fenv_t buf;
-	std::feholdexcept(&buf);
+	FPUHostFenvGuard host_fenv;
 	fpu.regs_80[st].v *= fpu.regs_80[other].v;
 	//flags and such :)
 	return;
 }
 
 static void FPU_FSUB(Bitu st, Bitu other){
-	fenv_t buf;
-	std::feholdexcept(&buf);
+	FPUHostFenvGuard host_fenv;
 	fpu.regs_80[st].v = fpu.regs_80[st].v - fpu.regs_80[other].v;
 	//flags and such :)
 	return;
 }
 
 static void FPU_FSUBR(Bitu st, Bitu other){
-	fenv_t buf;
-	std::feholdexcept(&buf);
+	FPUHostFenvGuard host_fenv;
 	fpu.regs_80[st].v = fpu.regs_80[other].v - fpu.regs_80[st].v;
 	//flags and such :)
 	return;
