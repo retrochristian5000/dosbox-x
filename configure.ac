@@ -513,9 +513,9 @@ esac
        AC_SUBST(WINDRES)
 
 AC_ARG_ENABLE([sdl2],
-  [AS_HELP_STRING([--enable-sdl2],[Build DOSBox-X using SDL2])],
-  [enable_sdl2=yes],
-  [enable_sdl2=no]
+  [AS_HELP_STRING([--disable-sdl2],[Disable the SDL2 build baseline])],
+  [enable_sdl2=$enableval],
+  [enable_sdl2=yes]
 )
 
 AC_ARG_ENABLE([sdl3],
@@ -532,10 +532,6 @@ dnl LIBRARY TEST: SDL 2.x
 SDL2_VERSION=2.0.5
 AM_PATH_SDL2($SDL2_VERSION)
 
-dnl LIBRARY TEST: SDL 1.x
-SDL_VERSION=1.2.0
-AM_PATH_SDL($SDL_VERSION)
-
 dnl LIBRARY USE: SDL selection
 
 if test x"$enable_sdl3" = xyes; then
@@ -549,39 +545,17 @@ if test x"$enable_sdl3" = xyes; then
         AC_MSG_ERROR([--enable-sdl3 was specified, but SDL3 was not found])
     fi
 elif test x"$enable_sdl2" = xyes; then
-    AC_MSG_NOTICE([--enable-sdl2 specified, trying SDL2])
+    AC_MSG_NOTICE([using the SDL2 build baseline])
     if test -n "$SDL2_LIBS"; then
         SDL_STRING="SDL2"
         LIBS="$LIBS $SDL2_LIBS"
         CPPFLAGS="$CPPFLAGS $SDL2_CFLAGS"
         AC_MSG_NOTICE([Building with SDL2])
     else
-        AC_MSG_ERROR([--enable-sdl2 was specified, but SDL2 was not found])
+        AC_MSG_ERROR([SDL2 was not found])
     fi
 else
-    AC_MSG_CHECKING([for SDL1])
-
-    if test -n "$SDL_LIBS"; then
-        AC_MSG_RESULT([yes])
-        SDL_STRING="SDL1"
-        LIBS="$LIBS $SDL_LIBS"
-        CPPFLAGS="$CPPFLAGS $SDL_CFLAGS"
-
-    else
-        AC_MSG_RESULT([no])
-        AC_MSG_NOTICE([SDL1 not found, falling back to SDL2])
-
-        AC_MSG_CHECKING([for SDL2])
-        if test -n "$SDL2_LIBS"; then
-            AC_MSG_RESULT([yes])
-            SDL_STRING="SDL2"
-            LIBS="$LIBS $SDL2_LIBS"
-            CPPFLAGS="$CPPFLAGS $SDL2_CFLAGS"
-        else
-            AC_MSG_RESULT([no])
-            AC_MSG_ERROR([SDL 1.x or SDL 2.x is required to compile this program])
-        fi
-    fi
+    AC_MSG_ERROR([SDL1 support has been removed; enable SDL2 or explicitly enable SDL3])
 fi
 
 AC_SUBST([SDL_STRING])
@@ -684,11 +658,6 @@ AM_CONDITIONAL([C_METAL], [test "x$have_metal" = "xyes"])
 # FIXME: Arrggh we need the WHOLE PATH
 pwd=`realpath $srcdir`
 if [[ -z "$pwd" ]]; then pwd=`pwd`; fi
-
-#CFLAGS="$CFLAGS -I$pwd -I$pwd/vs/sdlnet/linux-host/include -I$pwd/vs/sdlnet/linux-host/include/SDL"
-LDFLAGS="$LDFLAGS -L$pwd/vs/sdlnet/linux-host/lib"
-CPPFLAGS="$CPPFLAGS -I$pwd -I$pwd/vs/sdlnet/linux-host/include -I$pwd/vs/sdlnet/linux-host/include/SDL"
-#CXXFLAGS="$CXXFLAGS -I$pwd -I$pwd/vs/sdlnet/linux-host/include -I$pwd/vs/sdlnet/linux-host/include/SDL"
 
 if test x$enable_emscripten != xyes; then
 dnl Some target detection and actions for them
@@ -923,13 +892,7 @@ case "$host" in
     ;;
 esac
 
-have_sdl_net_h=no
-have_sdl_net_lib=no
-
-AC_CHECK_HEADERS([SDL_net.h], [have_sdl_net_h=yes])
-AC_CHECK_LIB([SDL_net], [SDLNet_Init], [have_sdl_net_lib=yes],,[$SDLNETLIB])
-
-dnl Check SDL2_net using headers + library first
+dnl Check SDL2_net using headers + library
 have_sdl2_net_h=no
 have_sdl2_net_lib=no
 
@@ -1008,16 +971,6 @@ AC_CHECK_HEADER(GL/gl.h, have_gl_h=yes , have_gl_h=no , )
 dnl LIBRARY TEST: Direct3D 9 header support
 AC_CHECK_HEADER(d3d9.h, have_d3d9_h=yes , have_d3d9_h=no , )
 AC_CHECK_HEADER(d3dx9math.h, have_d3dx9math_h=yes , have_d3dx9math_h=no , )
-
-dnl ================== SDL net special test for OS/2
-if test x$host = xi386-pc-os2-emx ; then
-  LIBS_BACKUP=$LIBS;
-  LIBS="$LIBS -lSDL_Net";
-  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <SDL_Net.h>]],[[
-	SDLNet_Init ();
-  ]])], [AC_MSG_RESULT(yes); have_sdl_net_lib=yes], AC_MSG_RESULT(no))
-  LIBS=$LIBS_BACKUP
-fi
 
 dnl FEATURE: PRINTER (requires FreeType2)
 AH_TEMPLATE(C_PRINTER,[Define to 1 to enable printer emulation])
@@ -1245,14 +1198,13 @@ else
   AC_MSG_RESULT(no)
 fi
 
-dnl FEATURE: Whether to support SDL net, and emulate modem and IPX connections
-AH_TEMPLATE(C_SDL_NET,[Indicate whether SDL_net is present])
+dnl FEATURE: Whether to support SDL2_net, and emulate modem and IPX connections
 AH_TEMPLATE(C_SDL2_NET,[Indicate whether SDL2_net is present])
-AH_TEMPLATE(C_MODEM,[Define to 1 to enable internal modem support, requires SDL_net])
-AH_TEMPLATE(C_IPX,[Define to 1 to enable IPX over Internet networking, requires SDL_net])
+AH_TEMPLATE(C_MODEM,[Define to 1 to enable internal modem support, requires SDL2_net])
+AH_TEMPLATE(C_IPX,[Define to 1 to enable IPX over Internet networking, requires SDL2_net])
 
 if test x$disable_sdl_net = xyes ; then
-  AC_MSG_WARN([SDL_net is disabled in parameters])
+  AC_MSG_WARN([SDL2_net is disabled in parameters])
 elif test "x$SDL_STRING" = "xSDL2" &&
      test x$have_sdl2_net_h = xyes &&
      test x$have_sdl2_net_lib = xyes ; then
@@ -1260,16 +1212,9 @@ elif test "x$SDL_STRING" = "xSDL2" &&
   AC_DEFINE(C_MODEM,1)
   AC_DEFINE(C_IPX,1)
   LIBS="$LIBS -lSDL2_net $SDLNETLIB"
-  AC_MSG_NOTICE([Using SDL2_net (SDL2): internal modem and IPX enabled])
-elif test x$have_sdl_net_h = xyes &&
-     test x$have_sdl_net_lib = xyes ; then
-  AC_DEFINE(C_SDL_NET,1)
-  AC_DEFINE(C_MODEM,1)
-  AC_DEFINE(C_IPX,1)
-  LIBS="$LIBS -lSDL_net $SDLNETLIB"
-  AC_MSG_NOTICE([Using SDL_net: internal modem and IPX enabled])
+  AC_MSG_NOTICE([Using SDL2_net: internal modem and IPX enabled])
 else
-  AC_MSG_WARN([Can't find SDL_net or SDL2_net, internal modem and IPX disabled])
+  AC_MSG_WARN([Can't find SDL2_net, internal modem and IPX disabled])
 fi
 
 dnl FEATURE: Whether to support libz, and enable snapshots
@@ -1526,7 +1471,7 @@ dnl placeholder
 AH_TEMPLATE(C_ICONV_WIN32,[Define to 1 to use Win32 functions in iconv backend])
 
 dnl If networking is used, add networking libraries last on Windows
-dnl so SDL_net, fluidsynth and libslirp successfully link to them
+dnl so SDL2_net, fluidsynth and libslirp successfully link to them
 if test x$enable_emscripten != xyes; then
 case "$host" in
     *-*-cygwin* | *-*-mingw32*)
@@ -1547,10 +1492,7 @@ case "$host" in
     if test x$enable_opencow = xyes; then
       LIBS="-lopencow $LIBS -lstdc++ -lopencow" #need to put at the first, also better at the last too.
       LDFLAGS="$LDFLAGS -Wl,--allow-multiple-definition "
-      if test -n "$SDL_LIBS"; then
-        LIBS="${LIBS//-luser32/-lopencow -luser32}"
-        #SDL_LIBS="${SDL_LIBS//-luser32/\-lopencow -luser32}"
-      fi
+      LIBS="${LIBS//-luser32/-lopencow -luser32}"
     fi
     ;;
 esac
