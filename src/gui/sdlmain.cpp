@@ -197,7 +197,6 @@ char* revert_escape_newlines(const char* aMessage);
 #include <output/output_tools_xbrz.h>
 static bool init_output = false;
 bool switch_to_d3d11_on_startup = false;
-bool switch_to_metal_on_startup = false;
 
 /* #include <output/output_metal.h> */ // includes Objective-C code
 #if C_METAL
@@ -1860,6 +1859,9 @@ SDL_Window* GFX_SetSDLWindowMode(uint16_t width, uint16_t height, SCREEN_TYPES s
             if(!(saved_flags & SDL_WINDOW_FULLSCREEN)) {
                 SDL_GetWindowPosition(sdl.window, &saved_x, &saved_y);
             }
+#if defined(MACOSX) && C_METAL
+            OUTPUT_Metal_Shutdown();
+#endif
             SDL_DestroyWindow(sdl.window);
         }
 
@@ -2015,6 +2017,12 @@ Bitu GFX_GetBestMode(Bitu flags)
             break;
 #endif
 
+#if defined(MACOSX) && defined(C_SDL2) && C_METAL
+        case SCREEN_METAL:
+            retFlags = OUTPUT_Metal_GetBestMode(flags);
+            break;
+#endif
+
 #if defined(USE_TTF)
         case SCREEN_TTF:
             retFlags = GFX_CAN_32 | GFX_SCALING;
@@ -2116,11 +2124,25 @@ unsigned char GFX_Ashift;
 unsigned char GFX_bpp;
 
 unsigned int GFX_GetBShift() {
+#if defined(MACOSX) && defined(C_SDL2) && C_METAL
+    if (sdl.desktop.type == SCREEN_METAL)
+        return 0; // Metal framebuffer is BGRA8, independent of SDL's surface.
+#endif
     return sdl.surface->format->Bshift;
 }
 
 void GFX_LogSDLState(void)
 {
+#if defined(MACOSX) && defined(C_SDL2) && C_METAL
+    if (sdl.desktop.type == SCREEN_METAL) {
+        GFX_bpp = 32;
+        GFX_Rmask = 0x00ff0000; GFX_Rshift = 16;
+        GFX_Gmask = 0x0000ff00; GFX_Gshift = 8;
+        GFX_Bmask = 0x000000ff; GFX_Bshift = 0;
+        GFX_Amask = 0xff000000; GFX_Ashift = 24;
+        return;
+    }
+#endif
     LOG(LOG_MISC,LOG_DEBUG)("SDL video mode: %ux%u (clip %ux%u with upper-left at %ux%u) %ubpp",
         (unsigned)sdl.surface->w,(unsigned)sdl.surface->h,
         (unsigned)sdl.clip.w,(unsigned)sdl.clip.h,
@@ -2315,6 +2337,10 @@ Bitu GFX_SetSize(Bitu width, Bitu height, Bitu flags, double scalex, double scal
         if (sdl.desktop.want_type != SCREEN_SURFACE)
         {
             // try falling back down to surface
+#if defined(MACOSX) && defined(C_SDL2) && C_METAL
+            if (sdl.desktop.want_type == SCREEN_METAL)
+                OUTPUT_Metal_Shutdown();
+#endif
             OUTPUT_SURFACE_Select();
             retFlags = OUTPUT_SURFACE_SetSize();
         }
@@ -3473,11 +3499,12 @@ Bitu GFX_GetRGB(uint8_t red, uint8_t green, uint8_t blue) {
 #if defined(C_SDL2)
         case SCREEN_DIRECT3D11:
 #endif
+            return SDL_MapRGB(sdl.surface->format, red, green, blue);
 #endif
 #if defined(MACOSX) && defined(C_SDL2) && C_METAL
         case SCREEN_METAL: // pixelFormat = MTLPixelFormatBGRA8Unorm
+            return (Bitu(blue) | (Bitu(green) << 8) | (Bitu(red) << 16) | (Bitu(255) << 24));
 #endif
-            return SDL_MapRGB(sdl.surface->format, red, green, blue);
         default:
             break;
     }
@@ -4209,21 +4236,9 @@ static void GUI_StartUp() {
     }
     else if(output == "metal")
     {
-        if(!init_output) {
-            switch_to_metal_on_startup = true;
-#if C_OPENGL
-            OUTPUT_OPENGL_Select(GLBilinear);
-#else
-            OUTPUT_SURFACE_Select();
-#endif
-            init_output = true;
-        }
-        else {
-            OUTPUT_Metal_Select();
-            metal_init();
-            sdl.desktop.want_type = SCREEN_METAL;
-            switch_to_metal_on_startup = false;
-        }
+        // Create GPU resources once the first graphics mode supplies its size.
+        OUTPUT_Metal_Select();
+        init_output = true;
 #endif
     }
 #if defined(USE_TTF)
@@ -6873,7 +6888,8 @@ void SDL_SetupConfigSection() {
     Pint->SetBasic(true);
 
     Pstring = sdl_sec->Add_string("output", Property::Changeable::Always, "default");
-    Pstring->Set_help("What video system to use for output (surface = software (SDL_Surface); openglnb = OpenGL nearest; openglpp = OpenGL perfect; ttf = TrueType font output).");
+    Pstring->Set_help("What video system to use for output (surface = software (SDL_Surface); metal = native macOS Metal; openglnb = OpenGL nearest; openglpp = OpenGL perfect; ttf = TrueType font output).\n"
+                      "Default prefers Metal on macOS when compiled in, with SDL surface fallback if initialization fails.");
     Pstring->Set_values(outputs);
     Pstring->SetBasic(true);
 

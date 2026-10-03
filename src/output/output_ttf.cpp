@@ -615,6 +615,11 @@ void SetOutputSwitch(const char *outputstr) {
             switchoutput = 6;
         else
 #endif
+#if defined(MACOSX) && defined(C_SDL2) && C_METAL
+        if (!strcasecmp(outputstr, "metal") || !strcasecmp(outputstr, "auto"))
+            switchoutput = 14;
+        else
+#endif
 #if C_OPENGL
         if (!strcasecmp(outputstr, "openglpp"))
             switchoutput = 5;
@@ -1510,6 +1515,10 @@ void ttf_switch_off(bool ss=true) {
 #if C_DIRECT3D
         else if (switchoutput==6)
             output = "direct3d";
+#endif
+#if defined(MACOSX) && defined(C_SDL2) && C_METAL
+        else if (switchoutput==14)
+            output = "metal";
 #endif
         else {
 #if C_DIRECT3D

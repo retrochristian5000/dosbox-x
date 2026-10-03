@@ -14,5 +14,7 @@ liboutput_a_SOURCES += output_gamelink.cpp
 endif
 
 if C_METAL
+# Metal owns Objective-C resources; leave other Objective-C++ targets unchanged.
+liboutput_a_OBJCXXFLAGS = $(AM_OBJCXXFLAGS) -fobjc-arc
 liboutput_a_SOURCES += output_metal.mm
 endif

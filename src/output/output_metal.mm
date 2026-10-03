@@ -54,8 +54,7 @@ bool CMetal::Initialize(void* nsview, int w, int h)
     layer.framebufferOnly = NO;
 
     /* Metal専用NSViewを作る */
-    NSView* parentView = (__bridge NSView*)view;
-    NSView* metalView = [[NSView alloc] initWithFrame:parentView.bounds];
+    metalView = [[NSView alloc] initWithFrame:view.bounds];
 
     metalView.autoresizingMask =
         NSViewWidthSizable | NSViewHeightSizable;
@@ -68,22 +67,6 @@ bool CMetal::Initialize(void* nsview, int w, int h)
 
     /* layerサイズ同期 */
     layer.frame = metalView.bounds;
-
-    /* ---------------------------------
-     * 3. Retina / drawableSize
-     * --------------------------------- */
-    CGFloat scale = 1.0;
-
-#if TARGET_OS_OSX
-    if (view.window)
-        scale = view.window.backingScaleFactor;
-#endif
-
-    /**
-    LOG_MSG("Metal: drawableSize = %f x %f",
-            layer.drawableSize.width,
-            layer.drawableSize.height);
-    */
 
     /* ---------------------------------
      * 4. CPU framebuffer
@@ -118,24 +101,18 @@ bool CMetal::Initialize(void* nsview, int w, int h)
 }
 void CMetal::CheckSourceResolution()
 {
-    static uint32_t last_w = 0;
-    static uint32_t last_h = 0;
-
-    if(last_w == sdl.draw.width &&
-        last_h == sdl.draw.height)
+    if(frame_width == sdl.draw.width &&
+        frame_height == sdl.draw.height)
         return;
 
     LOG_MSG("Metal: VGA source resolution changed %ux%u -> %ux%u",
-        last_w, last_h,
+        frame_width, frame_height,
         sdl.draw.width, sdl.draw.height);
 
     // Resize CPU buffer（don't shrink if smaller）
     ResizeCPUBuffer(
         sdl.draw.width,
         sdl.draw.height);
-
-    last_w = sdl.draw.width;
-    last_h = sdl.draw.height;
 
     Resize(
         sdl.draw.width, sdl.draw.height,   // Window size
@@ -159,12 +136,20 @@ void CMetal::ResizeCPUBuffer(uint32_t src_w, uint32_t src_h)
 
 void CMetal::Shutdown()
 {
+    [submittedFrame waitUntilCompleted];
+    submittedFrame = nil;
+    [metalView removeFromSuperview];
+    metalView.layer = nil;
+    metalView = nil;
+    layer = nil;
+    view = nil;
     frameTexture = nil;
     pipeline = nil;
     queue = nil;
     device = nil;
     samplerNearest = nil;
     samplerLinear = nil;
+    textureMapped = false;
 }
 
 bool CMetal::StartUpdate(uint8_t*& pixels, Bitu& pitch)
@@ -186,53 +171,59 @@ void CMetal::EndUpdate()
         //LOG_MSG("METAL: EndUpdate textureMapped=false");
         return;
     }
-
-    MTLRegion region = {
-        {0,0,0},
-        {frame_width, frame_height, 1}
-    };
-
-    [frameTexture replaceRegion : region
-        mipmapLevel : 0
-        withBytes : cpu_buffer.data()
-        bytesPerRow : cpu_pitch] ;
-
-    id<CAMetalDrawable> drawable = [layer nextDrawable];
-    if (!drawable) {
-        LOG_MSG("Metal: drawable is NULL");
-        return;
-    }
-    //LOG_MSG("Drawable texture size = %f x %f",
-    //    drawable.texture.width,
-    //    drawable.texture.height);
-
-    MTLRenderPassDescriptor* pass =
-        [MTLRenderPassDescriptor renderPassDescriptor];
-    pass.colorAttachments[0].clearColor =
-        MTLClearColorMake(0, 0, 0, 1); // Black
-    pass.colorAttachments[0].texture = drawable.texture;
-    pass.colorAttachments[0].loadAction = MTLLoadActionClear;
-    pass.colorAttachments[0].storeAction = MTLStoreActionStore;
-
-    id<MTLCommandBuffer> cmd = [queue commandBuffer];
-
-    id<MTLRenderCommandEncoder> enc =
-        [cmd renderCommandEncoderWithDescriptor : pass];
-    [enc setViewport:currentViewport];
-    [enc setRenderPipelineState : pipeline] ;
-    [enc setFragmentTexture : frameTexture atIndex : 0] ;
-    GetRenderMode();
-    SetSamplerMode(enc);
-
-    [enc drawPrimitives : MTLPrimitiveTypeTriangleStrip
-            vertexStart : 0
-            vertexCount : 4];
-    [enc endEncoding] ;
-
-    [cmd presentDrawable : drawable] ;
-    [cmd commit] ;
-
+    // A missing drawable must not leave subsequent frame updates locked out.
     textureMapped = false;
+
+    @autoreleasepool {
+        // The single upload texture must no longer be in use by the previous frame.
+        [submittedFrame waitUntilCompleted];
+        submittedFrame = nil;
+
+        MTLRegion region = {
+            {0,0,0},
+            {frame_width, frame_height, 1}
+        };
+
+        [frameTexture replaceRegion : region
+            mipmapLevel : 0
+            withBytes : cpu_buffer.data()
+            bytesPerRow : cpu_pitch] ;
+
+        id<CAMetalDrawable> drawable = [layer nextDrawable];
+        if (!drawable) {
+            return;
+        }
+        MTLRenderPassDescriptor* pass =
+            [MTLRenderPassDescriptor renderPassDescriptor];
+        pass.colorAttachments[0].clearColor =
+            MTLClearColorMake(0, 0, 0, 1); // Black
+        pass.colorAttachments[0].texture = drawable.texture;
+        pass.colorAttachments[0].loadAction = MTLLoadActionClear;
+        pass.colorAttachments[0].storeAction = MTLStoreActionStore;
+
+        id<MTLCommandBuffer> cmd = [queue commandBuffer];
+        if (!cmd)
+            return;
+
+        id<MTLRenderCommandEncoder> enc =
+            [cmd renderCommandEncoderWithDescriptor : pass];
+        if (!enc)
+            return;
+        [enc setViewport:currentViewport];
+        [enc setRenderPipelineState : pipeline] ;
+        [enc setFragmentTexture : frameTexture atIndex : 0] ;
+        GetRenderMode();
+        SetSamplerMode(enc);
+
+        [enc drawPrimitives : MTLPrimitiveTypeTriangleStrip
+                vertexStart : 0
+                vertexCount : 4];
+        [enc endEncoding] ;
+
+        [cmd presentDrawable : drawable] ;
+        [cmd commit] ;
+        submittedFrame = cmd;
+    }
 }
 
 
@@ -255,17 +246,12 @@ bool CMetal::CreateSampler()
 
 void CMetal::SetSamplerMode(id<MTLRenderCommandEncoder> encoder)
 {
-    static int last_mode = -1;
-    if(last_mode == current_render_mode) return;
-
     id<MTLSamplerState> s = samplerLinear;
 
     if(current_render_mode == ASPECT_NEAREST)
         s = samplerNearest;
 
     [encoder setFragmentSamplerState : s atIndex : 0] ;
-
-    last_mode = current_render_mode;
 }
 
 void CMetal::GetRenderMode() {
@@ -361,9 +347,7 @@ static CMetal* metal = nullptr;
 
 void metal_init(void)
 {
-    if(metal) {
-        metal->Shutdown();
-    }
+    OUTPUT_Metal_Shutdown();
 
     sdl.desktop.want_type = SCREEN_METAL;
 
@@ -385,13 +369,13 @@ void metal_init(void)
     SDL_SysWMinfo wmi;
     SDL_VERSION(&wmi.version);
 
-    if(!SDL_GetWindowWMInfo(sdl.window, &wmi)) {
+    if(!SDL_GetWindowWMInfo(sdl.window, &wmi) || wmi.subsystem != SDL_SYSWM_COCOA) {
         LOG_MSG("METAL: Failed to get WM info");
         OUTPUT_SURFACE_Select();
         return;
     }
 
-    NSWindow* nswin = (__bridge NSWindow*)wmi.info.cocoa.window;
+    NSWindow* nswin = wmi.info.cocoa.window;
     NSView* view = [nswin contentView];
 
     if(!view) {
@@ -403,19 +387,16 @@ void metal_init(void)
     if(sdl.desktop.fullscreen)
         GFX_CaptureMouse();
 
-    delete metal;
     metal = new CMetal();
-
-    if(!metal) {
-        LOG_MSG("METAL: Failed to create object");
-        OUTPUT_SURFACE_Select();
-        return;
-    }
 
     int w = sdl.draw.width ? sdl.draw.width : 640;
     int h = sdl.draw.height ? sdl.draw.height : 400;
 
-    if(!metal->Initialize((__bridge void*)view, w, h)) {
+    bool initialized = false;
+    @autoreleasepool {
+        initialized = metal->Initialize((__bridge void*)view, w, h);
+    }
+    if(!initialized) {
         LOG_MSG("METAL: Initialize failed");
         delete metal;
         metal = nullptr;
@@ -443,6 +424,8 @@ Bitu OUTPUT_Metal_GetBestMode(Bitu flags)
 
 Bitu OUTPUT_Metal_SetSize(void)
 {
+    if (!metal)
+        metal_init();
     if (!metal) {
         LOG_MSG("Metal: Not initialized");
         return 0;
@@ -451,8 +434,10 @@ Bitu OUTPUT_Metal_SetSize(void)
     /* ------------------------
      * Framebuffer (texture) size
      * ------------------------ */
-    uint32_t tex_w = metal->frame_width  ? metal->frame_width  : sdl.draw.width;
-    uint32_t tex_h = metal->frame_height ? metal->frame_height : sdl.draw.height;
+    uint32_t tex_w = sdl.draw.width;
+    uint32_t tex_h = sdl.draw.height;
+    if (!tex_w || !tex_h)
+        return 0;
 
     /* ------------------------
      * Window logical size
@@ -505,6 +490,10 @@ bool CMetal::Resize(uint32_t window_w,
 {
     if (!layer || !view)
         return false;
+    const CGFloat scale = view.window ? view.window.backingScaleFactor : [NSScreen mainScreen].backingScaleFactor;
+    // Firmware boot paths can render before the DOS BIOS supplies mode metadata.
+    const uint32_t mode_w = CurMode && CurMode->swidth ? CurMode->swidth : tex_w;
+    const uint32_t mode_h = CurMode && CurMode->sheight ? CurMode->sheight : tex_h;
     //LOG_MSG("Resize called: win=%u,%u tex=%u,%u", window_w, window_h, tex_w, tex_h);
 
     const bool reset_window_size =
@@ -517,10 +506,10 @@ bool CMetal::Resize(uint32_t window_w,
         if(aspect_ratio_x > 0 && aspect_ratio_y > 0)
             target_ratio = (double)aspect_ratio_x / aspect_ratio_y;    // user-defined / preset aspect ratio
         else if(aspect_ratio_x < 0 && aspect_ratio_y < 0 || IS_PC98_ARCH)
-            target_ratio = (double)CurMode->swidth / CurMode->sheight; // Use current mode's aspect ratio
+            target_ratio = (double)mode_w / mode_h; // Use current mode's aspect ratio
     }
-    else if(tex_h != CurMode->sheight) {
-        target_ratio = (double)CurMode->swidth / CurMode->sheight;
+    else if(tex_h != mode_h) {
+        target_ratio = (double)mode_w / mode_h;
     }
     else target_ratio = (double)tex_w / tex_h;
 
@@ -531,11 +520,11 @@ bool CMetal::Resize(uint32_t window_w,
             hardware_scaler_selected = false;
         }
         if(reset_window_size || render.scale.size != last_scalesize){
-            if(tex_h >= CurMode->sheight * 2) { // doublescan mode
+            if(tex_h >= mode_h * 2) { // doublescan mode
                 width = tex_w;
                 height = tex_h;
                 if(render.aspect) {
-                    width = (uint32_t)((double)height * CurMode->swidth / CurMode->sheight +0.5); // First adjust width to match the original aspect ratio.
+                    width = (uint32_t)((double)height * mode_w / mode_h +0.5); // First adjust width to match the original aspect ratio.
                     height = (uint32_t)((double)width / target_ratio + 0.5); // Then adjust height to match the target aspect ratio. This ensures the final window size maintains the target aspect ratio, even in doublescan mode.
                 }
                 window_w = (uint32_t)(height * target_ratio * (render.scale.hardware ? (double)render.scale.size / 2.0 : 1u) + 0.5);
@@ -543,7 +532,7 @@ bool CMetal::Resize(uint32_t window_w,
             }
             else {
                 window_w = tex_w * (render.scale.hardware ? render.scale.size : 1);
-                if(CurMode->type == M_TEXT && vga.mode != M_HERC_GFX) window_w = (uint32_t)((double)window_w / 2.0 + 0.5); // Suppress window size in text mode
+                if(CurMode && CurMode->type == M_TEXT && vga.mode != M_HERC_GFX) window_w = (uint32_t)((double)window_w / 2.0 + 0.5); // Suppress window size in text mode
                 if(window_w < tex_w) window_w = tex_w; // Keep at least original size
                 window_h = (uint32_t)((double)window_w / target_ratio + 0.5);
             }
@@ -565,7 +554,8 @@ bool CMetal::Resize(uint32_t window_w,
     if(window_w == last_window_w &&
         window_h == last_window_h &&
         tex_w == last_tex_w &&
-        tex_h == last_tex_h) {
+        tex_h == last_tex_h &&
+        layer.contentsScale == scale) {
         return true; // No change
     }
 
@@ -604,18 +594,7 @@ bool CMetal::Resize(uint32_t window_w,
     height = (uint32_t)real_h;
 
     /* ---------------------------------
-     * 2. Retina / HiDPI
-     * --------------------------------- */
-    CGFloat scale = 1.0;
-    NSView* nsv = (__bridge NSView*)view;
-
-    if (nsv.window) {
-        scale = nsv.window.backingScaleFactor;
-    } else {
-        scale = [NSScreen mainScreen].backingScaleFactor;
-    }
-    /* ---------------------------------
-     * 3. Update Layer size
+     * 2. Update Retina / HiDPI layer size
      * --------------------------------- */
     layer.contentsScale = scale;
 
@@ -652,6 +631,12 @@ bool CMetal::Resize(uint32_t window_w,
         currentViewport = { 0.0, 0.0, (double)dw, (double)dh, 0.0, 1.0 };
     }
 
+    // Mouse coordinates use window points, while Metal's viewport uses pixels.
+    sdl.clip.x = (Sint16)(currentViewport.originX / scale);
+    sdl.clip.y = (Sint16)(currentViewport.originY / scale);
+    sdl.clip.w = (Uint16)(currentViewport.width / scale);
+    sdl.clip.h = (Uint16)(currentViewport.height / scale);
+
     last_window_w = width;
     last_window_h = height;
     last_tex_w = frame_width;
@@ -669,11 +654,9 @@ bool CMetal::CreateFrameTexture(uint32_t w, uint32_t h)
             height:h
             mipmapped:NO];
 
-    desc.usage =
-        MTLTextureUsageShaderRead |
-        MTLTextureUsageShaderWrite;
+    desc.usage = MTLTextureUsageShaderRead;
     
-    desc.storageMode = MTLStorageModeShared;
+    // Keep Metal's hardware-specific default: shared on Apple GPUs, managed on Intel/AMD.
 
     frameTexture = [device newTextureWithDescriptor:desc];
 
@@ -700,7 +683,8 @@ void OUTPUT_Metal_EndUpdate(const uint16_t* changedLines)
 
 void OUTPUT_Metal_Shutdown()
 {
-    if(metal) metal->Shutdown();
+    delete metal;
+    metal = nullptr;
 }
 
 void OUTPUT_Metal_CheckSourceResolution()

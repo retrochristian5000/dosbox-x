@@ -75,9 +75,11 @@ public:
 
 private:
     NSView* view = nil;
+    NSView* metalView = nil;
 
     id<MTLDevice> device = nil;
     id<MTLCommandQueue> queue = nil;
+    id<MTLCommandBuffer> submittedFrame = nil;
     CAMetalLayer* layer = nil;
 
     id<MTLTexture> frameTexture = nil;
@@ -87,7 +89,7 @@ private:
 
     bool textureMapped = false;
     int current_render_mode = ASPECT_NEAREST;
-    MTLViewport currentViewport;
+    MTLViewport currentViewport = {};
 };
 
 #endif // defined(C_SDL2)

@@ -1,0 +1,25 @@
+name: Native graphics policy
+on:
+  push:
+    paths:
+      - 'src/output/**'
+      - 'src/gui/sdlmain.cpp'
+      - 'src/shell/shell.cpp'
+      - 'tests/verify_native_graphics.py'
+      - '.github/workflows/native-graphics.yml'
+  pull_request:
+    paths:
+      - 'src/output/**'
+      - 'src/gui/sdlmain.cpp'
+      - 'src/shell/shell.cpp'
+      - 'tests/verify_native_graphics.py'
+      - '.github/workflows/native-graphics.yml'
+permissions:
+  contents: read
+jobs:
+  output-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Verify platform defaults, overrides, modes, and pixels
+        run: python3 tests/verify_native_graphics.py

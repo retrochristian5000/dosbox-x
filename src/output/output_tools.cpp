@@ -96,7 +96,9 @@ std::string GetDefaultOutput() {
 # else
     output = "surface";
 # endif
-#elif defined(C_OPENGL) && (!(defined(LINUX) && !defined(C_SDL2)) || (defined(MACOSX) && !defined(__arm64__)))
+#elif defined(MACOSX) && defined(C_SDL2) && C_METAL
+    output = "metal";
+#elif C_OPENGL && (!(defined(LINUX) && !defined(C_SDL2)) || (defined(MACOSX) && !defined(__arm64__)))
     /* NTS: Lately, especially on Macbooks with Retina displays, OpenGL gives better performance
             than the CG bitmap-based "surface" output.
 
@@ -202,6 +204,11 @@ void change_output(int output) {
         OUTPUT_SURFACE_Select();
         break;
     }
+
+#if defined(MACOSX) && defined(C_SDL2) && C_METAL
+    if (sdl.desktop.want_type != SCREEN_METAL)
+        OUTPUT_Metal_Shutdown();
+#endif
 
 #if C_GAMELINK
     if (!OUTPUT_GAMELINK_InitTrackingMode() && sdl.desktop.want_type == SCREEN_GAMELINK) OUTPUT_SURFACE_Select();
@@ -480,25 +487,9 @@ bool toOutput(const char *what) {
 #endif
 #if MACOSX && defined(C_SDL2) && C_METAL
     else if(!strcmp(what, "metal")) {
-        if(sdl.desktop.type == SCREEN_METAL)
+        if(sdl.desktop.want_type == SCREEN_METAL)
             return false;
-        OUTPUT_Metal_Shutdown();
-#if defined(C_OPENGL)
-        change_output(3);
-#endif
-        if(window_was_maximized && !GFX_IsFullscreen()) {
-            change_output(14);
-#if defined(WIN32)
-            ShowWindow(GetHWND(), SW_MAXIMIZE);
-#endif
-        }
-        else {
-            OUTPUT_Metal_Shutdown();
-#if defined(C_OPENGL)
-            change_output(3);
-#endif
-            change_output(14);
-        }
+        change_output(14);
     }
 #endif
     if (reset) RENDER_Reset();

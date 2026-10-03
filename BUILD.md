@@ -54,6 +54,27 @@ The generated `.dosbox-x-build.conf` file is local working state and is ignored 
 parses and validates the values rather than sourcing the file as shell code. Command-line options override the saved settings,
 and `./build --no-config` bypasses them completely.
 
+Native macOS graphics
+---------------------
+
+On macOS SDL2 builds with Metal support, `[sdl] output=default` selects the native
+Metal/CAMetalLayer renderer. Metal is detected by configure; no additional build
+switch is needed. SDL continues to provide window and input integration. If Metal
+initialization fails, output falls back to SDL surface rendering.
+GPU resources initialize with the first graphics mode, including firmware boot
+paths that do not enter the built-in DOS shell.
+
+Explicit `output=surface`, `output=opengl`, or `output=ttf` selections remain
+available. TTF's `outputswitch=auto` also prefers Metal for graphics on macOS.
+xBRZ retains its existing compatible output selection. Builds without Metal keep
+their OpenGL or surface default.
+
+Run `python3 tests/verify_native_graphics.py` to check output selection, explicit
+TTF graphics overrides, first-mode activation/failure, mode negotiation, and BGRA pixel layout across build
+variants with a C++14 compiler. This portable check does not test Metal GPU
+presentation; fullscreen, Retina display changes, minimization, and output/UI
+switching also need testing on macOS.
+
 General information on source code compilation
 ----------------------------------------------
 
