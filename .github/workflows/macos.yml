@@ -40,14 +40,14 @@ jobs:
             VERSION=$(echo "${GITHUB_REF##*/}" | sed -E 's/^dosbox-x-v([0-9]+\.[0-9]+\.[0-9]+)$/\1/' || echo "unknown")
             echo "VERSION=$VERSION" >> $GITHUB_ENV
           fi
-      - name: Build macOS SDL1
+      - name: Build macOS Native
         run: |
           top=`pwd`
           ./build-macos
           strip $top/src/dosbox-x
           make dosbox-x.app
           mv dosbox-x.app $top/package/dosbox-x
-      - name: Build macOS SDL2
+      - name: Build macOS Legacy SDL2
         run: |
           top=`pwd`
           ./build-macos-sdl2
@@ -110,7 +110,7 @@ jobs:
           rm -rf dosbox-x.app
           rm -rf "$top/package/dosbox-x/dosbox-x.app"
           rm -rf "$top/package/dosbox-x-sdl2/dosbox-x.app"
-      - name: Build macOS SDL1 OSFREE
+      - name: Build macOS Native OSFREE
         if: steps.osfree.outputs.osfree != 'true'
         run: |
           top=`pwd`
@@ -118,7 +118,7 @@ jobs:
           strip $top/src/dosbox-x
           make dosbox-x.app
           mv dosbox-x.app $top/package/dosbox-x
-      - name: Build macOS SDL2 OSFREE
+      - name: Build macOS Legacy SDL2 OSFREE
         if: steps.osfree.outputs.osfree != 'true'
         run: |
           top=`pwd`
@@ -180,14 +180,14 @@ jobs:
             VERSION=$(echo "${GITHUB_REF##*/}" | sed -E 's/^dosbox-x-v([0-9]+\.[0-9]+\.[0-9]+)$/\1/' || echo "unknown")
             echo "VERSION=$VERSION" >> $GITHUB_ENV
           fi
-      - name: Build macOS SDL1
+      - name: Build macOS Native
         run: |
           top=`pwd`
           ./build-macos
           strip $top/src/dosbox-x
           make dosbox-x.app
           mv dosbox-x.app $top/package/dosbox-x
-      - name: Build macOS SDL2
+      - name: Build macOS Legacy SDL2
         run: |
           top=`pwd`
           ./build-macos-sdl2
@@ -250,7 +250,7 @@ jobs:
           rm -rf dosbox-x.app
           rm -rf "$top/package/dosbox-x/dosbox-x.app"
           rm -rf "$top/package/dosbox-x-sdl2/dosbox-x.app"
-      - name: Build macOS ARM SDL1 OSFREE
+      - name: Build macOS ARM Native OSFREE
         if: steps.osfree.outputs.osfree != 'true'
         run: |
           top=`pwd`
@@ -258,7 +258,7 @@ jobs:
           strip $top/src/dosbox-x
           make dosbox-x.app
           mv dosbox-x.app $top/package/dosbox-x
-      - name: Build macOS ARM SDL2 OSFREE
+      - name: Build macOS ARM Legacy SDL2 OSFREE
         if: steps.osfree.outputs.osfree != 'true'
         run: |
           top=`pwd`

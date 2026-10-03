@@ -9,7 +9,18 @@
 top=$(pwd)
 if test -z "${top}" ; then exit 1; fi
 
-chmod +x vs/sdl2/build-dosbox.sh
+macos_backend="${DOSBOX_MACOS_BACKEND:-native}"
+case "${macos_backend}" in
+    native|sdl2) ;;
+    *)
+        echo "Unknown macOS backend: ${macos_backend} (expected native or sdl2)" >&2
+        exit 2
+        ;;
+esac
+
+if [ "${macos_backend}" = "sdl2" ]; then
+    chmod +x vs/sdl2/build-dosbox.sh
+fi
 
 orig_CFLAGS="${CFLAGS}"
 orig_LDFLAGS="${LDFLAGS}"
@@ -75,25 +86,31 @@ for arch in ${architectures}; do
     arch_flags="-arch ${arch} -mmacosx-version-min=10.13 "
     CFLAGS="${arch_flags}${orig_CFLAGS}"
     CXXFLAGS="${arch_flags}${orig_CXXFLAGS}"
-    export CFLAGS CXXFLAGS
+    CPPFLAGS="${orig_CPPFLAGS}"
+    LDFLAGS="${orig_LDFLAGS}"
+    LIBS="${orig_LIBS}"
+    export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS LIBS
 
-    # prefer to compile against our own copy of SDL 2.x IF the system does not provide one
-    echo "Compiling our internal SDL 2.x"
-    (cd vs/sdl2 && ./build-dosbox.sh) || exit 1
-    new="-I${top}/vs/sdl2/linux-host/include "
-    nld="-L${top}/vs/sdl2/linux-host/lib "
-    CPPFLAGS="${orig_CPPFLAGS}${new}"
-    LDFLAGS="${orig_LDFLAGS}${nld}"
-    export LDFLAGS CPPFLAGS
+    if [ "${macos_backend}" = "sdl2" ]; then
+        # Explicit legacy fallback. Keep SDL isolated to this backend.
+        echo "Compiling the legacy in-tree SDL 2.x backend"
+        (cd vs/sdl2 && ./build-dosbox.sh) || exit 1
+        new="-I${top}/vs/sdl2/linux-host/include "
+        nld="-L${top}/vs/sdl2/linux-host/lib "
+        CPPFLAGS="${CPPFLAGS} ${new}"
+        LDFLAGS="${LDFLAGS} ${nld}"
 
-    # prefer to compile against our own copy of SDLnet 2.x
-    echo "Compiling our internal SDLnet 2.x"
-    chmod +x vs/sdl2net/*.sh
-    (cd vs/sdl2net && ./build-dosbox.sh) || exit 1
-    new="-I${top}/vs/sdl2net/linux-host/include "
-    nld="-L${top}/vs/sdl2net/linux-host/lib "
-    LDFLAGS="${LDFLAGS}${nld}"
-    CPPFLAGS="${CPPFLAGS}${new}"
+        echo "Compiling the legacy in-tree SDL2_net backend"
+        chmod +x vs/sdl2net/*.sh
+        (cd vs/sdl2net && ./build-dosbox.sh) || exit 1
+        new="-I${top}/vs/sdl2net/linux-host/include "
+        nld="-L${top}/vs/sdl2net/linux-host/lib "
+        LDFLAGS="${LDFLAGS} ${nld}"
+        CPPFLAGS="${CPPFLAGS} ${new}"
+    else
+        echo "Using native AppKit/Core Audio/IOKit host backend (no SDL runtime)"
+    fi
+    export LDFLAGS CPPFLAGS LIBS
     
     # prefer to compile against our own zlib
     echo "Compiling our internal zlib"
@@ -144,8 +161,28 @@ for arch in ${architectures}; do
     echo "Compiling DOSBox-X"
     chmod +x configure
 
-    ./configure --enable-debug=heavy --prefix=/usr --enable-sdl2 "${opts}" "${@}" || exit 1
+    if [ "${macos_backend}" = "native" ]; then
+        ./configure --enable-debug=heavy --prefix=/usr \
+            --enable-native-macos --disable-sdl2 --disable-sdlnet --disable-opengl \
+            "${opts}" "${@}" || exit 1
+    else
+        ./configure --enable-debug=heavy --prefix=/usr --enable-sdl2 \
+            "${opts}" "${@}" || exit 1
+    fi
     make -j$(sysctl -n hw.ncpu) || exit 1
+
+    if [ "${macos_backend}" = "native" ]; then
+        if otool -L src/dosbox-x | grep -Eiq 'SDL(2|2_net|_net)?'; then
+            echo "Native macOS dependency guard: SDL dylib found in src/dosbox-x" >&2
+            otool -L src/dosbox-x >&2
+            exit 1
+        fi
+        if nm -u src/dosbox-x | grep -Eq '(_SDL_|_SDLNet_)'; then
+            echo "Native macOS dependency guard: unresolved SDL runtime symbol found" >&2
+            nm -u src/dosbox-x | grep -E '(_SDL_|_SDLNet_)' >&2
+            exit 1
+        fi
+    fi
 
     cp src/dosbox-x "src/dosbox-x-${arch}"
 done

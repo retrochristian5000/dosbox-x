@@ -47,7 +47,7 @@ Interactive build configuration
 -------------------------------
 
 Run `./build menuconfig` to choose a persistent build profile/backend, compiler toolchain, and the macOS universal-build setting.
-SDL2 is the build baseline for this fork; SDL1 is no longer exposed by the universal build interface.
+SDL2 remains the general cross-platform build baseline. On macOS, the `macos` profile now uses the native AppKit/Core Audio/IOKit host backend by default; `build-macos-sdl2` is the explicit legacy SDL2 fallback.
 The menu previews the resolved backend before it saves, so unsupported combinations are rejected instead of becoming stale build state.
 
 The generated `.dosbox-x-build.conf` file is local working state and is ignored by Git. It contains data only; `./build`
@@ -57,17 +57,24 @@ and `./build --no-config` bypasses them completely.
 Native macOS graphics
 ---------------------
 
-On macOS SDL2 builds with Metal support, `[sdl] output=default` selects the native
-Metal/CAMetalLayer renderer. Metal is detected by configure; no additional build
-switch is needed. SDL continues to provide window and input integration. If Metal
-initialization fails, output falls back to SDL surface rendering.
-GPU resources initialize with the first graphics mode, including firmware boot
-paths that do not enter the built-in DOS shell.
+The default `macos` build uses AppKit for windows and events, Core Audio/AudioUnit
+for mixer output, and IOKit HID for controller input. It does not build or link
+SDL2 or SDL2_net. Long-lived DOSBox-X host code still uses SDL2-shaped public
+structures and constants during this migration; a preincluded compatibility
+header redirects SDL entry-point names to native `DOSBoxMac_*` implementations,
+so the native executable has no SDL runtime dependency.
 
-Explicit `output=surface`, `output=opengl`, or `output=ttf` selections remain
-available. TTF's `outputswitch=auto` also prefers Metal for graphics on macOS.
-xBRZ retains its existing compatible output selection. Builds without Metal keep
-their OpenGL or surface default.
+With Metal support, `[sdl] output=default` selects the Metal/CAMetalLayer renderer.
+GPU resources initialize with the first graphics mode, including firmware boot
+paths that do not enter the built-in DOS shell. The native build disables OpenGL
+while this host split is active; software surface and TTF paths use the native
+AppKit surface implementation. Use `./build-macos-sdl2` when the legacy SDL2
+host/backend is explicitly required.
+
+The native build runs `otool -L` and `nm -u` guards after linking and fails if
+an SDL/SDL2/SDL2_net dylib or unresolved SDL runtime symbol leaks into the binary.
+Run `python3 tests/verify_native_macos_host.py` for the portable static boundary
+check.
 
 Run `python3 tests/verify_native_graphics.py` to check output selection, explicit
 TTF graphics overrides, first-mode activation/failure, mode negotiation, and BGRA pixel layout across build
@@ -300,7 +307,7 @@ due to requiring parallel Homebrew installations running natively *and* under Ro
   ```
   sudo port install autoconf automake nasm glfw glew fluidsynth libslirp libpcap pkgconfig libsdl2_net
   ```
-* Compile natively for the host architecture (SDL1 or SDL2)
+* Compile natively for the host architecture. The first command is the SDL-free native macOS backend; the second is the explicit legacy SDL2 fallback.
   ```
   ./build-macos
   ```

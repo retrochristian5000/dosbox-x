@@ -6,6 +6,12 @@ on:
       - 'src/gui/sdlmain.cpp'
       - 'src/shell/shell.cpp'
       - 'tests/verify_native_graphics.py'
+      - 'tests/verify_native_macos_host.py'
+      - 'src/platform/macos/**'
+      - 'src/Makefile.am'
+      - 'configure.ac'
+      - 'build-macos'
+      - 'build-macos-sdl2'
       - '.github/workflows/native-graphics.yml'
   pull_request:
     paths:
@@ -13,6 +19,12 @@ on:
       - 'src/gui/sdlmain.cpp'
       - 'src/shell/shell.cpp'
       - 'tests/verify_native_graphics.py'
+      - 'tests/verify_native_macos_host.py'
+      - 'src/platform/macos/**'
+      - 'src/Makefile.am'
+      - 'configure.ac'
+      - 'build-macos'
+      - 'build-macos-sdl2'
       - '.github/workflows/native-graphics.yml'
 permissions:
   contents: read
@@ -23,3 +35,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Verify platform defaults, overrides, modes, and pixels
         run: python3 tests/verify_native_graphics.py
+      - name: Verify native macOS host boundary
+        run: python3 tests/verify_native_macos_host.py

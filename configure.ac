@@ -524,6 +524,16 @@ AC_ARG_ENABLE([sdl3],
   [enable_sdl3=no]
 )
 
+AC_ARG_ENABLE([native-macos],
+  [AS_HELP_STRING([--enable-native-macos],[Use AppKit/Core Audio/IOKit directly on macOS; do not link SDL])],
+  [enable_native_macos=$enableval],
+  [enable_native_macos=no]
+)
+
+if test x"$enable_native_macos" = xyes; then
+  enable_sdl2=no
+fi
+
 dnl LIBRARY TEST: SDL 3.x
 SDL3_VERSION=3.5.0
 AM_PATH_SDL3($SDL3_VERSION)
@@ -534,7 +544,29 @@ AM_PATH_SDL2($SDL2_VERSION)
 
 dnl LIBRARY USE: SDL selection
 
-if test x"$enable_sdl3" = xyes; then
+if test x"$enable_native_macos" = xyes; then
+    case "$host" in
+      *-*-darwin*) ;;
+      *) AC_MSG_ERROR([--enable-native-macos is only supported on macOS/Darwin]) ;;
+    esac
+    if test x"$enable_sdl3" = xyes; then
+      AC_MSG_ERROR([--enable-native-macos and --enable-sdl3 are mutually exclusive])
+    fi
+
+    dnl Transitional ABI boundary: host-facing code still uses SDL2 structs and
+    dnl constants, but every SDL entry point is renamed to a DOSBoxMac_* native
+    dnl implementation by the preincluded compatibility header. No SDL library
+    dnl is detected or linked for this target.
+    AC_DEFINE([C_NATIVE_MACOS], [1], [Define to 1 for the native macOS host backend])
+    AC_DEFINE([C_SDL2], [1], [Define to 1 for SDL2-shaped compile-time host structures])
+    native_macos_srcdir=`cd "$srcdir" 2>/dev/null && pwd -P`
+    if test -z "$native_macos_srcdir"; then
+      AC_MSG_ERROR([unable to resolve the source directory for native macOS])
+    fi
+    CPPFLAGS="$CPPFLAGS -I$native_macos_srcdir/vs/sdl2/include -include $native_macos_srcdir/src/platform/macos/native_macos_compat.h"
+    SDL_STRING="NativeMacOS"
+    AC_MSG_NOTICE([Building native macOS host backend without an SDL runtime])
+elif test x"$enable_sdl3" = xyes; then
     AC_MSG_NOTICE([--enable-sdl3 specified, trying SDL3])
     if test -n "$SDL3_LIBS"; then
         SDL_STRING="SDL3"
@@ -555,10 +587,11 @@ elif test x"$enable_sdl2" = xyes; then
         AC_MSG_ERROR([SDL2 was not found])
     fi
 else
-    AC_MSG_ERROR([SDL1 support has been removed; enable SDL2 or explicitly enable SDL3])
+    AC_MSG_ERROR([SDL1 support has been removed; enable SDL2, enable native macOS, or explicitly enable SDL3])
 fi
 
 AC_SUBST([SDL_STRING])
+AM_CONDITIONAL([NATIVE_MACOS], [test x"$enable_native_macos" = xyes])
 
 AH_TEMPLATE(C_GAMELINK,[Define to 1 to enable game link headless mode])
 AC_CHECK_LIB(rt, main, have_rt_lib=yes, have_rt_lib=no , )

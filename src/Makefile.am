@@ -29,6 +29,12 @@ endif
 	$(WINDRES) -o $@ $<
 
 dosbox_x_SOURCES = dosbox.cpp $(ico_stuff)
+
+if NATIVE_MACOS
+dosbox_x_SOURCES += platform/macos/native_macos.mm
+dosbox_x_OBJCXXFLAGS = $(AM_OBJCXXFLAGS) -fobjc-arc
+endif
+
 dosbox_x_LDADD = debug/libdebug.a dos/libdos.a shell/libshell.a builtin/libbuiltin.a \
                ints/libints.a hardware/serialport/libserial.a hardware/parport/libparallel.a \
                libs/passthroughio/libpassthroughio.a gui/libgui.a libs/gui_tk/libgui_tk.a hardware/libhardware.a \
