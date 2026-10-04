@@ -7,7 +7,7 @@ if MACOSX
 if MACOS_UNIVERSAL
 MACOS_BINARIES=src/dosbox-x-arm64 src/dosbox-x-x86_64
 else
-MACOS_BINARIES=src/dosbox-x-$(shell uname -m)
+MACOS_BINARIES=src/dosbox-x-$(MACOSX_CPU)
 endif
 endif
 
@@ -43,8 +43,8 @@ dosbox-x.app: $(MACOS_BINARIES) contrib/macos/dosbox.icns src/tool/mach-o-matic
 	@for exe in dosbox-x.app/Contents/MacOS/arm64/dosbox-x dosbox-x.app/Contents/MacOS/x86_64/dosbox-x; do \
 		if [ -f "$$exe" ]; then \
 			./appbundledeps.py --exe "$$exe" | while read R; do \
-				Y=`echo "$$R" | cut -d $$'\t' -f 1`; \
-				dylib=`echo "$$R" | cut -d $$'\t' -f 2`; \
+				Y=$$(printf '%s\n' "$$R" | cut -f 1); \
+				dylib=$$(printf '%s\n' "$$R" | cut -f 2); \
 				echo "Copying $$dylib"; \
 				if echo $$Y | grep -Eq '/opt/homebrew'; then \
 					cp -v $$Y dosbox-x.app/Contents/MacOS/arm64/$$dylib; \
@@ -60,8 +60,8 @@ dosbox-x.app: $(MACOS_BINARIES) contrib/macos/dosbox.icns src/tool/mach-o-matic
 	done
 # Fix the linker search paths of the libraries we copied
 	@for dir in dosbox-x.app/Contents/MacOS/arm64 dosbox-x.app/Contents/MacOS/x86_64; do \
-		if [ `ls $$dir/*.dylib 2>/dev/null | wc -l` -gt 0 ]; then \
-			arpf=`basename $$dir`; \
+		if ls "$$dir"/*.dylib >/dev/null 2>&1; then \
+			arpf=$$(basename "$$dir"); \
 			for dylib in $$dir/*.dylib; do \
 				[ -f "$$dylib" ] && (ARCHPREF=$$arpf src/tool/mach-o-matic "$$dylib") || exit 1; \
 			done; \
@@ -96,7 +96,7 @@ debug-dosbox-x-app:
 	@echo 'This is crucial to maintain the ability to distribute this application in the Mac OS X world.'
 
 src/tool/mach-o-matic: src/tool/mach-o-matic.cpp
-	g++ -o $@ $<
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
 
 clean-local:
 	rm -f src/tool/mach-o-matic
@@ -120,14 +120,14 @@ dox:
 	doxygen
 
 dox-site-update:
-	if [[ !( -d ../dosbox-x-gh-pages ) ]]; then git clone -b gh-pages https://github.com/joncampbell123/dosbox-x.git ../dosbox-x-gh-pages; fi
+	if [ ! -d ../dosbox-x-gh-pages ]; then git clone -b gh-pages https://github.com/joncampbell123/dosbox-x.git ../dosbox-x-gh-pages; fi
 	(cd ../dosbox-x-gh-pages && rm -Rfv doxygen)
 	cp -Rf doxygen ../dosbox-x-gh-pages/
 	(cd ../dosbox-x-gh-pages && git add doxygen/)
 	(cd ../dosbox-x-gh-pages && git commit doxygen/)
 
 compat-site-update:
-	if [[ !( -d ../dosbox-x-gh-pages ) ]]; then git clone -b gh-pages https://github.com/joncampbell123/dosbox-x.git ../dosbox-x-gh-pages; fi
+	if [ ! -d ../dosbox-x-gh-pages ]; then git clone -b gh-pages https://github.com/joncampbell123/dosbox-x.git ../dosbox-x-gh-pages; fi
 	true # ----------
 	(cd /mnt/main/emu/demotest && ./make-compat-chart.pl)
 	cp /mnt/main/emu/demotest/compat-chart.html ../dosbox-x-gh-pages/demoscene-compat.html
@@ -137,7 +137,7 @@ compat-site-update:
 	true # ----------
 	(cd ../dosbox-x-gh-pages && git add demoscene-compat.html)
 	(cd ../dosbox-x-gh-pages && git add msdos-compat.html)
-	(cd ../dosbox-x-gh-pages && git commit -m 'more' {msdos,demoscene}-compat.html)
+	(cd ../dosbox-x-gh-pages && git commit -m 'more' msdos-compat.html demoscene-compat.html)
 
 install: src/dosbox-x
 	mkdir -p $(DESTDIR)$(bindir)

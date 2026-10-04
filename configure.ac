@@ -101,6 +101,7 @@ AC_CANONICAL_BUILD
 
 MACOSX_DEPLOYMENT_TARGET="10.15"
 MACOSX_ARCH="ARM"
+MACOSX_CPU="unknown"
 
 case "$host_os" in
   darwin*)
@@ -118,12 +119,15 @@ case "$host_os" in
     case "$host_cpu" in
       x86_64)
         MACOSX_ARCH="Intel"
+        MACOSX_CPU="x86_64"
         ;;
-      arm64|aarch64)
+      arm|arm64|aarch64)
         MACOSX_ARCH="ARM"
+        MACOSX_CPU="arm64"
         ;;
       *)
         MACOSX_ARCH="Unknown"
+        MACOSX_CPU="$host_cpu"
         ;;
     esac
     ;;
@@ -134,6 +138,7 @@ esac
 
 AC_SUBST([MACOSX_DEPLOYMENT_TARGET])
 AC_SUBST([MACOSX_ARCH])
+AC_SUBST([MACOSX_CPU])
 
 AC_MSG_CHECKING([for Git commit hash])
 COMMIT_HASH=`git rev-parse --short=7 HEAD 2>/dev/null || echo "unknown"`
@@ -197,7 +202,7 @@ AC_CACHE_CHECK([whether the C compiler is Clang],
    AC_LANG_POP([C])])
 is_clang=$ac_cv_c_compiler_clang
 AC_PROG_INSTALL
-AC_CHECK_TOOL(AR, ar)
+AM_PROG_AR
 AC_PROG_RANLIB
 AC_PREFIX_DEFAULT([/usr/local])
 
@@ -1584,7 +1589,6 @@ src/agent/Makefile
 src/builtin/Makefile
 src/misc/Makefile
 src/shell/Makefile
-src/platform/Makefile
 include/Makefile
 contrib/macos/dosbox-x.plist
 contrib/linux/dosbox-x.spec

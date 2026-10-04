@@ -5,7 +5,7 @@ if EMSCRIPTEN
 dosbox_x_LDFLAGS = -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$$ERRNO_CODES']
 endif
 
-SUBDIRS = cpu debug dos fpu gui hardware libs ints misc shell builtin platform aviwriter output agent
+SUBDIRS = cpu debug dos fpu gui hardware libs ints misc shell builtin aviwriter output agent
 
 bin_PROGRAMS = dosbox-x
 

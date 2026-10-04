@@ -32,7 +32,7 @@ echo "This may take a while ..."
 
 aclocal
 autoheader
-automake --include-deps --add-missing --copy 
+automake -Woverride -Wportability --include-deps --add-missing --copy 
 autoconf
 
 echo "Now you are ready to run ./configure."

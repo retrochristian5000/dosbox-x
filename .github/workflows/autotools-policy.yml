@@ -1,17 +1,25 @@
-name: Autoconf policy
+name: Autotools policy
 
 on:
   push:
     paths:
       - 'configure.ac'
       - 'autogen.sh'
+      - 'Makefile.am'
+      - 'include/Makefile.am'
+      - 'src/**/Makefile.am'
       - 'tests/verify_autoconf_policy.py'
+      - 'tests/verify_automake_policy.py'
       - '.github/workflows/autotools-policy.yml'
   pull_request:
     paths:
       - 'configure.ac'
       - 'autogen.sh'
+      - 'Makefile.am'
+      - 'include/Makefile.am'
+      - 'src/**/Makefile.am'
       - 'tests/verify_autoconf_policy.py'
+      - 'tests/verify_automake_policy.py'
       - '.github/workflows/autotools-policy.yml'
 
 permissions:
@@ -24,3 +32,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Verify configure.ac modernization guard
         run: python3 tests/verify_autoconf_policy.py
+      - name: Verify Automake graph and portability guard
+        run: python3 tests/verify_automake_policy.py
