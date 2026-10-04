@@ -92,20 +92,6 @@ AC_DEFUN([AC_CHECK_C_CXXFLAGS],
   AC_CHECK_CXXFLAGS([$1])
 ])# AC_CHECK_C_CXXFLAGS
 
-dnl Detect Clang
-AC_CACHE_CHECK([whether the compiler is clang],
-  [ac_cv_compiler_clang],
-  [AC_COMPILE_IFELSE(
-     [AC_LANG_PROGRAM([[
-#ifndef __clang__
-#error not clang
-#endif
-     ]], [])],
-     [ac_cv_compiler_clang=yes],
-     [ac_cv_compiler_clang=no])])
-
-is_clang=$ac_cv_compiler_clang
-
 dnl End Utility function ============================
 
 
@@ -194,6 +180,22 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_CXX
 AC_PROG_OBJCXX
+
+dnl Compiler-family probes belong after AC_PROG_CC/AC_PROG_CXX so they use
+dnl the selected toolchain and its target flags rather than an implicit host compiler.
+AC_CACHE_CHECK([whether the C compiler is Clang],
+  [ac_cv_c_compiler_clang],
+  [AC_LANG_PUSH([C])
+   AC_COMPILE_IFELSE(
+     [AC_LANG_PROGRAM([[
+#ifndef __clang__
+#error not clang
+#endif
+     ]], [])],
+     [ac_cv_c_compiler_clang=yes],
+     [ac_cv_c_compiler_clang=no])
+   AC_LANG_POP([C])])
+is_clang=$ac_cv_c_compiler_clang
 AC_PROG_INSTALL
 AC_CHECK_TOOL(AR, ar)
 AC_PROG_RANLIB
@@ -226,24 +228,24 @@ AC_CHECK_HEADERS([sys/socket.h  netinet/in.h pwd.h], [], [],
 #endif
 ])
 
-dnl C++14 is required.
+dnl C11 and C++14 are the minimum language modes. Preserve an explicit
+dnl caller-selected -std= mode so newer Clang/LLVM builds are not forced back
+dnl to gnu11/gnu++14 after the user requested a newer standard.
+case " $CFLAGS " in
+  *" -std="*) ;;
+  *)
+    AC_CHECK_CFLAGS([-std=gnu11], [],
+      [AC_MSG_ERROR([Your C compiler must support C11 or better])])
+    ;;
+esac
 
-dnl AC_CHECK_CXXFLAGS will prepend gnu++14 to CXXFLAGS if supported, for us.
-OLDCFLAGS="$CFLAGS"
-OLDCPPFLAGS="$CPPFLAGS"
-OLDCXXFLAGS="$CXXFLAGS"
-
-AC_MSG_CHECKING([checking for C++14 support])
-AC_CHECK_CXXFLAGS([ -std=gnu++14 ], [  ], 
-    AC_MSG_ERROR([ Your compiler must support C++14 or better ])
-)
-
-CXXFLAGS="$OLDCXXFLAGS"
-CPPFLAGS="$OLDCPPFLAGS"
-CFLAGS="$OLDCFLAGS"
-
-CFLAGS="$CFLAGS -std=gnu11"; # no such "gnu14"
-CXXFLAGS="$CXXFLAGS -std=gnu++14";
+case " $CXXFLAGS " in
+  *" -std="*) ;;
+  *)
+    AC_CHECK_CXXFLAGS([-std=gnu++14], [],
+      [AC_MSG_ERROR([Your C++ compiler must support C++14 or better])])
+    ;;
+esac
 
 dnl Allow the SDL drawn menu to be enabled on Windows or macOS instead of their native menu system.
 AH_TEMPLATE(C_FORCE_MENU_SDLDRAW,[Define to 1 to force SDL-drawn menus])
@@ -363,7 +365,7 @@ typedef struct { } __attribute__((packed)) junk;]],
 
 dnl TEST: Check if the compiler supports certain attributes
 OLDCFLAGS="$CFLAGS"
-CFLAGS="-Werror"
+CFLAGS="$CFLAGS -Werror"
 
 AH_TEMPLATE([C_ATTRIBUTE_ALWAYS_INLINE],[Determines if the compilers supports always_inline attribute.])
 AC_MSG_CHECKING(if compiler allows __attribute__((always_inline)) )
@@ -732,7 +734,10 @@ case "$host" in
        dnl to do more to distinguish them.
        dnl For now I am lazy and do not add proper detection code.
        macosx=1
-       OBJCXXFLAGS="$OBJCXXFLAGS -std=gnu++14";
+       case " $OBJCXXFLAGS " in
+         *" -std="*) ;;
+         *) OBJCXXFLAGS="$OBJCXXFLAGS -std=gnu++14" ;;
+       esac
        AC_DEFINE(MACOSX, 1, [Compiling on Mac OS X])
        LIBS="$LIBS -framework Carbon -framework CoreFoundation -framework CoreMIDI -framework AudioUnit -framework AudioToolbox -framework ApplicationServices -framework AppKit -framework IOKit "
        dnl FEATURE: Whether to support direct serial port pass-through

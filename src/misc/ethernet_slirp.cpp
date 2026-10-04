@@ -422,7 +422,7 @@ struct slirp_timer* SlirpEthernetConnection::TimerNew(SlirpTimerCb cb, void *cb_
 
 void SlirpEthernetConnection::TimerFree(struct slirp_timer* timer)
 {
-	std::remove(timers.begin(), timers.end(), timer);
+	timers.erase(std::remove(timers.begin(), timers.end(), timer), timers.end());
 	delete timer;
 }
 
@@ -466,7 +466,7 @@ void SlirpEthernetConnection::PollRegister(int fd)
 
 void SlirpEthernetConnection::PollUnregister(int fd)
 {
-	std::remove(registered_fds.begin(), registered_fds.end(), fd);
+	registered_fds.erase(std::remove(registered_fds.begin(), registered_fds.end(), fd), registered_fds.end());
 }
 
 void SlirpEthernetConnection::PollsAddRegistered()

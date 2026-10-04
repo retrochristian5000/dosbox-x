@@ -16,6 +16,9 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#ifndef MENU_DOSBOXMENU_H
+#define MENU_DOSBOXMENU_H
+
 #include <map>
 #include <string>
 #include <vector>
@@ -127,9 +130,6 @@ void GUI_Shortcut(int select);
 
 #define DOSBOXMENU_ACCELMARK_STR        "\x01"
 #define DOSBOXMENU_ACCELMARK_CHAR       '\x01'
-
-#ifndef MENU_DOSBOXMENU_H
-#define MENU_DOSBOXMENU_H
 
 class DOSBoxMenu {
     public:
