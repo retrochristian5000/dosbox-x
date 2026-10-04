@@ -52,6 +52,7 @@ struct SDL_Window {
     Uint32 flags = 0;
     SDL_bool keyboard_grab = SDL_FALSE;
     SDL_DisplayMode mode = {};
+    bool fullscreen_transition = false;
 };
 
 struct SDL_mutex {
@@ -998,6 +999,8 @@ int SDLCALL mem_close(SDL_RWops *rw)
 - (void)windowDidMove:(NSNotification *)notification
 {
     (void)notification;
+    if (self.owner && self.owner->fullscreen_transition)
+        return;
     SDL_Event event = {};
     event.type = SDL_WINDOWEVENT;
     event.window.event = SDL_WINDOWEVENT_MOVED;
@@ -1014,7 +1017,7 @@ int SDLCALL mem_close(SDL_RWops *rw)
 - (void)windowDidResize:(NSNotification *)notification
 {
     (void)notification;
-    if (!self.owner)
+    if (!self.owner || self.owner->fullscreen_transition)
         return;
     int w = 0;
     int h = 0;
@@ -1051,18 +1054,58 @@ int SDLCALL mem_close(SDL_RWops *rw)
     push_event(event);
 }
 
-- (void)windowDidEnterFullScreen:(NSNotification *)notification
+- (void)windowWillEnterFullScreen:(NSNotification *)notification
 {
     (void)notification;
     if (self.owner)
-        self.owner->flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+        self.owner->fullscreen_transition = true;
+}
+
+- (void)windowDidEnterFullScreen:(NSNotification *)notification
+{
+    (void)notification;
+    if (!self.owner)
+        return;
+
+    self.owner->fullscreen_transition = false;
+    self.owner->flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+
+    int w = 0;
+    int h = 0;
+    DOSBoxMac_GetWindowSize(self.owner, &w, &h);
+    SDL_Event resized = {};
+    resized.type = SDL_WINDOWEVENT;
+    resized.window.event = SDL_WINDOWEVENT_RESIZED;
+    resized.window.data1 = w;
+    resized.window.data2 = h;
+    push_event(resized);
+}
+
+- (void)windowWillExitFullScreen:(NSNotification *)notification
+{
+    (void)notification;
+    if (self.owner)
+        self.owner->fullscreen_transition = true;
 }
 
 - (void)windowDidExitFullScreen:(NSNotification *)notification
 {
     (void)notification;
-    if (self.owner)
-        self.owner->flags &= ~(SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+    if (!self.owner)
+        return;
+
+    self.owner->fullscreen_transition = false;
+    self.owner->flags &= ~(SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+
+    int w = 0;
+    int h = 0;
+    DOSBoxMac_GetWindowSize(self.owner, &w, &h);
+    SDL_Event resized = {};
+    resized.type = SDL_WINDOWEVENT;
+    resized.window.event = SDL_WINDOWEVENT_RESIZED;
+    resized.window.data1 = w;
+    resized.window.data2 = h;
+    push_event(resized);
 }
 @end
 
@@ -1370,9 +1413,11 @@ int SDLCALL DOSBoxMac_SetWindowFullscreen(SDL_Window *window, Uint32 flags)
     if (!window || !window->nswindow)
         return -1;
     const bool want = (flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
-    const bool have = (window->flags & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0;
-    if (want != have)
+    const bool have = ([window->nswindow styleMask] & NSWindowStyleMaskFullScreen) != 0;
+    if (want != have && !window->fullscreen_transition) {
+        window->fullscreen_transition = true;
         [window->nswindow toggleFullScreen:nil];
+    }
     if (want)
         window->flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     else
