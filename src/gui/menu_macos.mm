@@ -446,14 +446,26 @@ void macosx_GetWindowDPI(ScreenSizeInfo &info) {
         if (my_quartz_match_window_to_monitor(&did,wnd) >= 0) {
             CGRect drct = CGDisplayBounds(did);
             CGSize dsz = CGDisplayScreenSize(did);
+            CGDisplayModeRef mode = CGDisplayCopyDisplayMode(did);
 
             info.method = METHOD_COREGRAPHICS;
 
             info.screen_position_pixels.x        = drct.origin.x;
             info.screen_position_pixels.y        = drct.origin.y;
 
+            /*
+             * CGDisplayBounds follows the logical desktop coordinate space,
+             * which is what window/fullscreen layout needs. Physical DPI,
+             * however, must use the mode's backing-pixel dimensions on Retina
+             * displays rather than those logical dimensions.
+             */
             info.screen_dimensions_pixels.width  = drct.size.width;
             info.screen_dimensions_pixels.height = drct.size.height;
+
+            const double backing_width = mode ? (double)CGDisplayModeGetPixelWidth(mode)
+                                              : (double)drct.size.width;
+            const double backing_height = mode ? (double)CGDisplayModeGetPixelHeight(mode)
+                                               : (double)drct.size.height;
 
             /* According to Apple documentation, this function CAN return zero */
             if (dsz.width > 0 && dsz.height > 0) {
@@ -462,50 +474,55 @@ void macosx_GetWindowDPI(ScreenSizeInfo &info) {
 
                 if (info.screen_dimensions_mm.width > 0)
                     info.screen_dpi.width =
-                        ((((double)info.screen_dimensions_pixels.width) * 25.4) /
+                        ((backing_width * 25.4) /
                          ((double)info.screen_dimensions_mm.width));
 
                 if (info.screen_dimensions_mm.height > 0)
                     info.screen_dpi.height =
-                        ((((double)info.screen_dimensions_pixels.height) * 25.4) /
+                        ((backing_height * 25.4) /
                          ((double)info.screen_dimensions_mm.height));
             }
+
+            if (mode)
+                CGDisplayModeRelease(mode);
         }
     }
 }
 
 static int my_quartz_match_window_to_monitor(CGDirectDisplayID *new_id, NSWindow *wnd) {
-    if (wnd != nil) {
-        CGError err;
-        uint32_t cnt = 1;
-        CGDirectDisplayID did = 0;
-        NSRect rct = [wnd frame];
-// NTS: This did not appear until Mojave, and some followers on Github prefer to compile for somewhat older versions of OS X
-//      NSPoint pt = [wnd convertPointToScreen:NSMakePoint(rct.size.width / 2, rct.size.height / 2)];
-// NTS: convertRectToScreen however is documented to exist since 10.7, unless Apple got that wrong too...
-        NSPoint pt = [wnd convertRectToScreen:NSMakeRect(rct.size.width / 2, rct.size.height / 2, 0, 0)].origin; /* x,y,w,h */
+    if (new_id == NULL || wnd == nil)
+        return -1;
 
-        {
-            /* Eugh this ugliness wouldn't be necessary if we didn't have to fudge relative to primary display. */
-            CGRect prct = CGDisplayBounds(CGMainDisplayID());
-            pt.y = (prct.origin.y + prct.size.height) - pt.y;
-        }
-
-        err = CGGetDisplaysWithPoint(pt,1,&did,&cnt);
-
-        /* This might happen if our window is so far off the screen that the center point does not match any monitor */
-        if (err != kCGErrorSuccess) {
-            err = kCGErrorSuccess;
-            did = CGMainDisplayID(); /* Can't fail, eh, Apple? OK then. */
-        }
-
-        if (err == kCGErrorSuccess) {
-            *new_id = did;
+    /*
+     * NSWindow.screen is AppKit's authoritative display assignment and avoids
+     * translating the window center through the primary display coordinate
+     * system. It can be nil only while a window is entirely off-screen.
+     */
+    NSScreen *screen = [wnd screen];
+    if (screen != nil) {
+        NSNumber *screenNumber = [[screen deviceDescription] objectForKey:@"NSScreenNumber"];
+        if (screenNumber != nil) {
+            *new_id = (CGDirectDisplayID)[screenNumber unsignedIntValue];
             return 0;
         }
     }
 
-    return -1;
+    /* Off-screen fallback: match the window center in global display space. */
+    NSRect frame = [wnd frame];
+    NSPoint center = NSMakePoint(NSMidX(frame), NSMidY(frame));
+    CGRect mainBounds = CGDisplayBounds(CGMainDisplayID());
+    CGPoint cgPoint = CGPointMake(center.x,
+                                  CGRectGetMaxY(mainBounds) - center.y);
+    uint32_t count = 1;
+    CGDirectDisplayID display = 0;
+    if (CGGetDisplaysWithPoint(cgPoint, 1, &display, &count) == kCGErrorSuccess &&
+        count > 0) {
+        *new_id = display;
+        return 0;
+    }
+
+    *new_id = CGMainDisplayID();
+    return 0;
 }
 
 #if !defined(C_SDL2)
