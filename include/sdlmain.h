@@ -3,7 +3,9 @@
 #include "mouse.h"
 #include "video.h"
 
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
+#endif
 
 #ifdef __WIN32__
 #include "SDL_syswm.h"
