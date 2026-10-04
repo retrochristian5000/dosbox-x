@@ -80,6 +80,7 @@
 #endif
 
 #include <unordered_map>
+#include <output/output_metal.h>
 #include <output/output_ttf.h>
 
 #ifdef DOSBOXMENU_EXTERNALLY_MANAGED
@@ -118,7 +119,6 @@ extern void                 LoadMessageFile(const char * fname);
 extern void                 GFX_SetTitle(int32_t cycles, int frameskip, Bits timing, bool paused);
 
 #if defined(MACOSX) && defined(C_SDL2) && C_METAL
-void OUTPUT_Metal_Shutdown();
 void change_output(int);
 #endif
 

@@ -133,13 +133,29 @@ for arc_source, label in ((native, "native_macos.mm"), (metal, "output_metal.mm"
         raise AssertionError(f"ARC source contains manual Objective-C ownership: {label}")
 
 if "using namespace std;" in metal_header:
-    raise AssertionError("Objective-C++ Metal header leaks the std namespace")
-for unused_header in ("<sys/types.h>", "<assert.h>", "<math.h>"):
-    if unused_header in metal_header:
-        raise AssertionError(f"Metal Objective-C++ header carries unused system dependency: {unused_header}")
-for required_header in ("<cstdint>", "<vector>"):
-    if required_header not in metal_header:
-        raise AssertionError(f"Metal Objective-C++ header misses direct C++ dependency: {required_header}")
+    raise AssertionError("Metal public header leaks the std namespace")
+for implementation_token in ("#import", "@class", "@protocol", "id<", "NSView", "CAMetalLayer", "class CMetal"):
+    if implementation_token in metal_header:
+        raise AssertionError(
+            f"Metal public header leaks Objective-C++ implementation detail: {implementation_token}"
+        )
+if "<cstdint>" not in metal_header:
+    raise AssertionError("Metal public header misses fixed-width integer declarations")
+if "class CMetal" not in metal:
+    raise AssertionError("Metal implementation no longer owns its private CMetal class")
+require(sdlmain_cpp, "#include <output/output_metal.h>",
+        "sdlmain must consume the Metal public header")
+require(sdl_gui, "#include <output/output_metal.h>",
+        "GUI must consume the Metal public header")
+for stale in (
+    "void metal_init();",
+    "void OUTPUT_Metal_Select();",
+    "void OUTPUT_Metal_Shutdown();",
+):
+    if stale in sdlmain_cpp:
+        raise AssertionError(f"sdlmain.cpp still hand-declares Metal API: {stale}")
+if "void OUTPUT_Metal_Shutdown();" in sdl_gui:
+    raise AssertionError("sdl_gui.cpp still hand-declares the Metal shutdown API")
 
 for api in (
     "SDL_Init",
