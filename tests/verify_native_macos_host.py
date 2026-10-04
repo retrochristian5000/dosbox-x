@@ -289,6 +289,14 @@ require(menu, 'CGDisplayModeGetPixelWidth(mode)',
         "macOS DPI must use backing-pixel width")
 require(menu, 'CGDisplayModeGetPixelHeight(mode)',
         "macOS DPI must use backing-pixel height")
+require(native, "- (void)windowDidFailToEnterFullScreen:(NSWindow *)window",
+        "NSWindowDelegate enter-fullscreen failure signature")
+require(native, "- (void)windowDidFailToExitFullScreen:(NSWindow *)window",
+        "NSWindowDelegate exit-fullscreen failure signature")
+if "- (void)windowDidFailToEnterFullScreen:(NSNotification *)" in native:
+    raise AssertionError("delegate enter-fullscreen failure callback uses notification signature")
+if "- (void)windowDidFailToExitFullScreen:(NSNotification *)" in native:
+    raise AssertionError("delegate exit-fullscreen failure callback uses notification signature")
 if "FIXME display index" in sdlmain_cpp:
     raise AssertionError("stale primary-display fallback remains in SDL2 display sizing")
 
