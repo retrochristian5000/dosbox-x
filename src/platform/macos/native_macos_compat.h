@@ -56,7 +56,6 @@
 #define SDL_GetWindowDisplayIndex       DOSBoxMac_GetWindowDisplayIndex
 #define SDL_SetWindowKeyboardGrab       DOSBoxMac_SetWindowKeyboardGrab
 #define SDL_GetWindowKeyboardGrab       DOSBoxMac_GetWindowKeyboardGrab
-#define SDL_GetWindowWMInfo             DOSBoxMac_GetWindowWMInfo
 #define SDL_ShowCursor                  DOSBoxMac_ShowCursor
 #define SDL_SetRelativeMouseMode        DOSBoxMac_SetRelativeMouseMode
 
