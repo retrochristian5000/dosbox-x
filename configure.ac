@@ -1561,8 +1561,6 @@ AC_CONFIG_FILES([
 Makefile
 src/Makefile
 src/cpu/Makefile
-src/cpu/core_full/Makefile
-src/cpu/core_normal/Makefile
 src/debug/Makefile
 src/dos/Makefile
 src/fpu/Makefile
