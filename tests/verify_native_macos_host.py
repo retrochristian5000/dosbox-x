@@ -22,6 +22,7 @@ def require(text, needle, label):
 
 
 build = read("build-macos")
+driver = read("build")
 legacy = read("build-macos-sdl2")
 sdk_resolver = read("scripts/resolve-macos-sdk.bash")
 llvm_bootstrap = read("scripts/bootstrap-native-llvm.bash")
@@ -53,12 +54,23 @@ require(build, "--enable-native-macos --disable-sdl2 --disable-sdlnet --disable-
         "native configure flags")
 require(build, "otool -L src/dosbox-x", "native dylib dependency guard")
 require(build, "nm -u src/dosbox-x", "native unresolved-symbol guard")
-require(build, 'orig_OBJCXXFLAGS="${OBJCXXFLAGS}"',
+require(build, 'orig_OBJCXXFLAGS="${OBJCXXFLAGS:-}"',
         "macOS build must preserve caller Objective-C++ flags")
 require(build, 'SDKROOT="$(bash "$top/scripts/resolve-macos-sdk.bash")"',
         "macOS build must resolve the active SDK")
 require(build, '"${CC:-cc}" ${CPPFLAGS} ${CFLAGS} -x c -fsyntax-only -',
         "macOS build must probe system headers through the selected compiler and effective flags")
+require(build, 'clean_build="${DOSBOX_CLEAN_BUILD:-0}"',
+        "macOS incremental build must keep an explicit clean escape hatch")
+require(build, "dependency_is_fresh()", "macOS dependency cache validator")
+require(build, "macos-active-config.key", "macOS active configure fingerprint")
+require(build, "package_config_digest()", "configure cache must notice package feature changes")
+require(build, "Reusing DOSBox-X configure state", "macOS configure-state reuse")
+require(build, "Incrementally compiling DOSBox-X", "macOS incremental compile path")
+require(driver, "--clean", "top-level clean-build control")
+require(driver, "--reconfigure", "top-level reconfigure control")
+require(driver, "export DOSBOX_CLEAN_BUILD=1", "top-level clean-build forwarding")
+require(driver, "export DOSBOX_RECONFIGURE=1", "top-level reconfigure forwarding")
 require(sdk_resolver, 'xcrun --sdk macosx --show-sdk-path',
         "macOS SDK resolver must use the active Xcode SDK")
 require(sdk_resolver, '$sdk/usr/include/sys/types.h',
