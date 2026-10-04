@@ -40,7 +40,10 @@ void MAPPER_StartUp();
 void MAPPER_Run(bool pressed);
 void MAPPER_RunEvent(Bitu);
 void MAPPER_RunInternal();
+bool MAPPER_IsRunning(void);
 void MAPPER_LosingFocus(void);
+void MapperCapCursorToggle(void);
+void ext_signal_host_key(bool enable);
 
 union SDL_Event;
 void MAPPER_CheckEvent(SDL_Event *);

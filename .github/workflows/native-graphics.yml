@@ -4,6 +4,10 @@ on:
     paths:
       - 'src/output/**'
       - 'src/gui/sdlmain.cpp'
+      - 'src/gui/sdl_gui.cpp'
+      - 'src/gui/menu.cpp'
+      - 'include/mapper.h'
+      - 'include/sdlmain.h'
       - 'src/gui/menu_macos.mm'
       - 'src/gui/Makefile.am'
       - 'src/shell/shell.cpp'
@@ -21,6 +25,10 @@ on:
     paths:
       - 'src/output/**'
       - 'src/gui/sdlmain.cpp'
+      - 'src/gui/sdl_gui.cpp'
+      - 'src/gui/menu.cpp'
+      - 'include/mapper.h'
+      - 'include/sdlmain.h'
       - 'src/gui/menu_macos.mm'
       - 'src/gui/Makefile.am'
       - 'src/shell/shell.cpp'

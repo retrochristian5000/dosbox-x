@@ -3,7 +3,7 @@
 #include "config.h"
 #include "dos_inc.h"
 #include "menu.h"
-
+#include "mapper.h"
 #include "sdlmain.h"
 #include "SDL.h"
 #include "SDL_version.h"
@@ -43,7 +43,6 @@ void SetAlpha(double alpha) {
 }
 #else
 void sdl1_hax_set_topmost(unsigned char topmost) {
-    SDL_Window* GFX_GetSDLWindow(void);
     SDL_SysWMinfo wminfo = {};
     SDL_VERSION(&wminfo.version);
     NSWindow *wnd = nil;
@@ -66,7 +65,6 @@ void MacOSEnableWindowCapture(unsigned int enable) {
     NSWindow *wnd = nil;
 
 # if defined(C_SDL2)
-    SDL_Window* GFX_GetSDLWindow(void);
     SDL_SysWMinfo wminfo = {};
     SDL_VERSION(&wminfo.version);
     if (SDL_GetWindowWMInfo(GFX_GetSDLWindow(),&wminfo) >= 0) {
@@ -128,10 +126,6 @@ void IME_SetEnable(int state) {
 #endif
 
 extern int pause_menu_item_tag;
-extern bool is_paused;
-extern void PushDummySDL(void);
-extern bool MAPPER_IsRunning(void);
-extern bool GUI_IsRunning(void);
 
 char tempstr[4096];
 bool InitCodePage(), CodePageGuestToHostUTF8(char *d/*CROSS_LEN*/,const char *s/*CROSS_LEN*/);
@@ -188,7 +182,6 @@ static NSTouchBarItemIdentifier TouchBarCursorCaptureIdentifier = @"com.dosbox-x
 @end
 #endif
 
-extern void ext_signal_host_key(bool enable);
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 101202/* touch bar interface appeared in 10.12.2+ according to Apple */
 @implementation DOSBoxHostButton
@@ -425,7 +418,7 @@ void macosx_init_dock_menu(void) {
 extern "C" int sdl1_hax_macosx_window_to_monitor_and_update(CGDirectDisplayID *did);
 #endif
 
-int my_quartz_match_window_to_monitor(CGDirectDisplayID *new_id,NSWindow *wnd);
+static int my_quartz_match_window_to_monitor(CGDirectDisplayID *new_id, NSWindow *wnd);
 
 void macosx_GetWindowDPI(ScreenSizeInfo &info) {
     NSWindow *wnd = nil;
@@ -435,7 +428,6 @@ void macosx_GetWindowDPI(ScreenSizeInfo &info) {
 #if !defined(C_SDL2)
     wnd = sdl1_hax_get_window();
 #else
-    SDL_Window* GFX_GetSDLWindow(void);
 
     SDL_SysWMinfo wminfo = {};
     SDL_VERSION(&wminfo.version);
@@ -481,7 +473,7 @@ void macosx_GetWindowDPI(ScreenSizeInfo &info) {
     }
 }
 
-int my_quartz_match_window_to_monitor(CGDirectDisplayID *new_id,NSWindow *wnd) {
+static int my_quartz_match_window_to_monitor(CGDirectDisplayID *new_id, NSWindow *wnd) {
     if (wnd != nil) {
         CGError err;
         uint32_t cnt = 1;
@@ -771,7 +763,6 @@ void menu_macosx_set_menuobj(DOSBoxMenu *new_altMenu) {
 {
     (void)sender;
     if (is_paused || MAPPER_IsRunning() || GUI_IsRunning()) return;
-    void NewInstanceEvent(bool pressed);
     NewInstanceEvent(true);
 }
 
@@ -779,7 +770,6 @@ void menu_macosx_set_menuobj(DOSBoxMenu *new_altMenu) {
 {
     (void)sender;
     if (is_paused || MAPPER_IsRunning() || GUI_IsRunning()) return;
-    extern void MAPPER_Run(bool pressed);
     MAPPER_Run(false);
 }
 
@@ -787,7 +777,6 @@ void menu_macosx_set_menuobj(DOSBoxMenu *new_altMenu) {
 {
     (void)sender;
     if (is_paused || MAPPER_IsRunning() || GUI_IsRunning()) return;
-    extern void MapperCapCursorToggle(void);
     MapperCapCursorToggle();
 }
 
@@ -795,15 +784,12 @@ void menu_macosx_set_menuobj(DOSBoxMenu *new_altMenu) {
 {
     (void)sender;
     if (is_paused || MAPPER_IsRunning() || GUI_IsRunning()) return;
-    extern void GUI_Run(bool pressed);
     GUI_Run(false);
 }
 
 - (void)DOSBoxXMenuActionPause:(id)sender
 {
     (void)sender;
-    extern bool unpause_now;
-    extern void PauseDOSBox(bool pressed);
 
     if (MAPPER_IsRunning() || GUI_IsRunning()) return;
 

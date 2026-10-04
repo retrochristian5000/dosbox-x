@@ -225,6 +225,15 @@ extern Bitu userResizeWindowWidth;
 extern Bitu userResizeWindowHeight;
 extern Bitu currentWindowWidth;
 extern Bitu currentWindowHeight;
+extern bool is_paused;
+extern bool unpause_now;
+extern int pause_menu_item_tag;
+
+void PushDummySDL(void);
+void NewInstanceEvent(bool pressed);
+void GUI_ResetResize(bool pressed);
+void GUI_Run(bool pressed);
+bool GUI_IsRunning(void);
 
 void GFX_DrawSDLMenu(DOSBoxMenu &menu, DOSBoxMenu::displaylist &dl);
 void GFX_LogSDLState(void);
@@ -241,6 +250,7 @@ bool systemmessagebox(char const * aTitle, char const * aMessage, char const * a
 int GetNumScreen();
 
 #if defined(C_SDL2)
+SDL_Window* GFX_GetSDLWindow(void);
 SDL_Window* GFX_SetSDLWindowMode(uint16_t width, uint16_t height, SCREEN_TYPES screenType);
 #endif
 

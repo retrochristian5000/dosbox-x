@@ -33,6 +33,11 @@ native = read("src/platform/macos/native_macos.mm")
 menu = read("src/gui/menu_macos.mm")
 metal = read("src/output/output_metal.mm")
 metal_header = read("src/output/output_metal.h")
+sdlmain_header = read("include/sdlmain.h")
+mapper_header = read("include/mapper.h")
+menu_cpp = read("src/gui/menu.cpp")
+sdl_gui = read("src/gui/sdl_gui.cpp")
+sdlmain_cpp = read("src/gui/sdlmain.cpp")
 
 require(build, 'macos_backend="${DOSBOX_MACOS_BACKEND:-native}"',
         "build-macos must default to native")
@@ -87,6 +92,41 @@ require(menu, "[alert release];", "manual NSAlert ownership cleanup")
 for forbidden in ("CFBridgingRelease", "__bridge", "[panel release]"):
     if forbidden in menu:
         raise AssertionError(f"manual-reference-counted menu code contains ARC/over-release pattern: {forbidden}")
+
+for declaration, owner in (
+    ("SDL_Window* GFX_GetSDLWindow(void);", sdlmain_header),
+    ("void NewInstanceEvent(bool pressed);", sdlmain_header),
+    ("void GUI_Run(bool pressed);", sdlmain_header),
+    ("bool GUI_IsRunning(void);", sdlmain_header),
+    ("extern bool is_paused;", sdlmain_header),
+    ("extern bool unpause_now;", sdlmain_header),
+    ("bool MAPPER_IsRunning(void);", mapper_header),
+    ("void MapperCapCursorToggle(void);", mapper_header),
+    ("void ext_signal_host_key(bool enable);", mapper_header),
+):
+    if declaration not in owner:
+        raise AssertionError(f"shared forward declaration is missing from its header: {declaration}")
+
+for body_decl in (
+    "SDL_Window* GFX_GetSDLWindow(void);",
+    "void NewInstanceEvent(bool pressed);",
+    "extern void MAPPER_Run(bool pressed);",
+    "extern void MapperCapCursorToggle(void);",
+    "extern void GUI_Run(bool pressed);",
+    "extern bool unpause_now;",
+    "extern void PauseDOSBox(bool pressed);",
+):
+    if body_decl in menu:
+        raise AssertionError(f"menu_macos.mm still carries ad-hoc forward declaration: {body_decl}")
+
+if "SDL_Window* GFX_GetSDLWindow(void);" in sdl_gui:
+    raise AssertionError("sdl_gui.cpp still redeclares GFX_GetSDLWindow inside function bodies")
+if "extern bool is_paused;" in menu_cpp:
+    raise AssertionError("menu.cpp still redeclares shared pause state")
+if "extern void GUI_Run(bool pressed);" in sdlmain_cpp:
+    raise AssertionError("sdlmain.cpp still redeclares GUI_Run instead of using sdlmain.h")
+if "static int my_quartz_match_window_to_monitor" not in menu:
+    raise AssertionError("private Quartz helper should have internal linkage")
 
 for arc_source, label in ((native, "native_macos.mm"), (metal, "output_metal.mm")):
     if " release]" in arc_source or " autorelease]" in arc_source:

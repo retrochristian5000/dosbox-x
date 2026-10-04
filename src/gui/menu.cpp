@@ -918,7 +918,6 @@ static const char *def_menu_help[] =
     NULL
 };
 
-extern bool is_paused;
 void DOSBox_SetSysMenu(void);
 #if defined(USE_TTF)
 void resetFontSize();
@@ -2237,8 +2236,6 @@ void DOSBox_CheckOS(int &id, int &major, int &minor) {
 
 void MSG_WM_COMMAND_handle(SDL_SysWMmsg &Message) {
 #if defined(WIN32) && !defined(HX_DOS)
-    bool MAPPER_IsRunning(void);
-    bool GUI_IsRunning(void);
 
 #if defined(C_SDL2)
     if (Message.msg.win.msg != WM_COMMAND) return;
@@ -2254,19 +2251,15 @@ void MSG_WM_COMMAND_handle(SDL_SysWMmsg &Message) {
 #endif
     if (!MAPPER_IsRunning() && !GUI_IsRunning()) {
         if (LOWORD(wParam) == ID_WIN_SYSMENU_MAPPER) {
-            extern void MAPPER_Run(bool pressed);
             MAPPER_Run(false);
         }
         if (LOWORD(wParam) == ID_WIN_SYSMENU_CFG_GUI) {
-            extern void GUI_Run(bool pressed);
             GUI_Run(false);
         }
         if (LOWORD(wParam) == ID_WIN_SYSMENU_PAUSE) {
-            extern void PauseDOSBox(bool pressed);
             PauseDOSBox(true);
         }
         if (LOWORD(wParam) == ID_WIN_SYSMENU_RESETSIZE) {
-            void GUI_ResetResize(bool pressed);
             GUI_ResetResize(true);
         }
 #if defined(USE_TTF)

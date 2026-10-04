@@ -160,7 +160,7 @@ bool advOptUser = false;
 
 std::string GetDOSBoxXPath(bool withexe);
 static std::map< std::vector<GUI::Char>, GUI::ToplevelWindow* > cfg_windows_active;
-void getlogtext(std::string &str), getcodetext(std::string &text), ApplySetting(std::string pvar, std::string inputline, bool quiet), GUI_Run(bool pressed);
+void getlogtext(std::string &str), getcodetext(std::string &text), ApplySetting(std::string pvar, std::string inputline, bool quiet);
 void ttf_switch_on(bool ss=true), ttf_switch_off(bool ss=true), setAspectRatio(Section_prop * section), GFX_ForceRedrawScreen(void), SetWindowTransparency(int trans);
 bool CheckQuit(void), OpenGL_using(void);
 char tmp1[CROSS_LEN*2], tmp2[CROSS_LEN];
@@ -335,8 +335,6 @@ static GUI::ScreenSDL *UI_Startup(GUI::ScreenSDL *screen) {
 #if defined(C_SDL2)
     {
         dw = 640; dh = 480;
-
-        SDL_Window* GFX_GetSDLWindow(void);
         SDL_Window *w = GFX_GetSDLWindow();
         SDL_GetWindowSize(w,&dw,&dh);
     }
@@ -478,7 +476,6 @@ static GUI::ScreenSDL *UI_Startup(GUI::ScreenSDL *screen) {
             SDL_SetSurfaceAlphaMod(screenshot, i); 
             SDL_BlitSurface(background, NULL, sdlscreen, NULL); 
             SDL_BlitSurface(screenshot, NULL, sdlscreen, NULL);
-            SDL_Window* GFX_GetSDLWindow(void);
             SDL_UpdateWindowSurface(GFX_GetSDLWindow());
             while (SDL_PollEvent(&event)); 
             SDL_Delay(40); 
@@ -507,7 +504,6 @@ static GUI::ScreenSDL *UI_Startup(GUI::ScreenSDL *screen) {
     if (screenshot != NULL && background != NULL)
         SDL_BlitSurface(background, NULL, sdlscreen, NULL);
 #if defined(C_SDL2)
-    SDL_Window* GFX_GetSDLWindow(void);
     SDL_UpdateWindowSurface(GFX_GetSDLWindow());
 #else   
     SDL_UpdateRect(sdlscreen, 0, 0, 0, 0);
@@ -617,7 +613,6 @@ static void UI_Shutdown(GUI::ScreenSDL *screen) {
             SDL_SetSurfaceAlphaMod(screenshot, i); 
             SDL_BlitSurface(background, NULL, sdlscreen, NULL); 
             SDL_BlitSurface(screenshot, NULL, sdlscreen, NULL);
-            SDL_Window* GFX_GetSDLWindow(void);
             SDL_UpdateWindowSurface(GFX_GetSDLWindow());
             while (SDL_PollEvent(&event)); 
             SDL_Delay(40); 
@@ -3753,7 +3748,6 @@ static void UI_Execute(GUI::ScreenSDL *screen) {
         screen->update(screen->getTime());
 
 #if defined(C_SDL2)
-        SDL_Window* GFX_GetSDLWindow(void);
         SDL_UpdateWindowSurface(GFX_GetSDLWindow());
 #else
         SDL_UpdateRect(sdlscreen, 0, 0, 0, 0);
@@ -4023,7 +4017,6 @@ static void UI_Select(GUI::ScreenSDL *screen, int select) {
 
         screen->update(4);
 #if defined(C_SDL2)
-        SDL_Window* GFX_GetSDLWindow(void);
         SDL_UpdateWindowSurface(GFX_GetSDLWindow());
 #else   
         SDL_UpdateRect(sdlscreen, 0, 0, 0, 0);

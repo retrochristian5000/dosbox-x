@@ -968,9 +968,7 @@ void UpdateWindowDimensions(void)
 #define MAPPERFILE_SDL1         "mapper-dosbox-x.sdl1.map"
 #define MAPPERFILE_SDL2         "mapper-dosbox-x.sdl2.map"
 
-void                        GUI_ResetResize(bool);
 void                        GUI_LoadFonts();
-void                        GUI_Run(bool);
 
 const char*                 titlebar = NULL;
 extern bool                 CPU_CycleAutoAdjust;
@@ -6010,15 +6008,12 @@ void GFX_Events() {
                             }
                             break;
                         case ID_WIN_SYSMENU_MAPPER:
-                            extern void MAPPER_Run(bool pressed);
                             MAPPER_Run(false);
                             break;
                         case ID_WIN_SYSMENU_CFG_GUI:
-                            extern void GUI_Run(bool pressed);
                             GUI_Run(false);
                             break;
                         case ID_WIN_SYSMENU_PAUSE:
-                            void PauseDOSBox(bool pressed);
                             PauseDOSBox(true);
                             break;
                         case ID_WIN_SYSMENU_RESETSIZE:
@@ -6465,15 +6460,12 @@ void GFX_Events() {
                             break;
 #if !defined(HX_DOS)
                         case ID_WIN_SYSMENU_MAPPER:
-                            extern void MAPPER_Run(bool pressed);
                             MAPPER_Run(false);
                             break;
                         case ID_WIN_SYSMENU_CFG_GUI:
-                            extern void GUI_Run(bool pressed);
                             GUI_Run(false);
                             break;
                         case ID_WIN_SYSMENU_PAUSE:
-                            void PauseDOSBox(bool pressed);
                             PauseDOSBox(true);
                             break;
                         case ID_WIN_SYSMENU_RESETSIZE:
