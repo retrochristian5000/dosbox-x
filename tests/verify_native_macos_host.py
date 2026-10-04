@@ -238,7 +238,6 @@ if "void OUTPUT_Metal_Shutdown();" in sdl_gui:
 for api in (
     "SDL_Init",
     "SDL_CreateWindow",
-    "SDL_GetWindowWMInfo",
     "SDL_OpenAudioDevice",
     "SDL_NumJoysticks",
     "SDL_CreateMutex",
@@ -281,20 +280,42 @@ require(metal, "#include <cmath>",
         "Metal geometry must declare std::round dependency")
 require(metal, "layer.framebufferOnly = YES;",
         "Metal drawable should use framebuffer-only optimization")
-require(macosx_host_header, "void *macosx_native_content_view(void);",
-        "native AppKit content-view accessor declaration")
-require(native, "void *macosx_native_content_view(void)",
-        "native AppKit content-view accessor implementation")
-require(metal, "macosx_native_content_view()",
-        "native Metal path must consume the AppKit content view directly")
-require(metal, "#if !(defined(C_NATIVE_MACOS) && C_NATIVE_MACOS)",
-        "SDL SysWM include must be excluded from native Metal")
+require(macosx_host_header, "void *macosx_content_view(void);",
+        "opaque macOS content-view accessor declaration")
+require(macosx_host_header, "void *macosx_native_window(void);",
+        "native AppKit window accessor declaration")
+require(native, "void *macosx_native_window(void)",
+        "native AppKit window accessor implementation")
+require(menu, "return (NSWindow *)macosx_native_window();",
+        "native menu/DPI path must consume the AppKit window directly")
+require(menu, "void *macosx_content_view(void)",
+        "shared opaque macOS content-view implementation")
+require(metal, "macosx_content_view()",
+        "Metal must consume the host-owned AppKit content view")
+for source_name, source in (
+    ("native_macos.mm", native),
+    ("output_metal.mm", metal),
+):
+    for stale_syswm in (
+        "SDL_syswm.h",
+        "SDL_SysWMinfo",
+        "SDL_GetWindowWMInfo",
+        "SDL_SYSWM_COCOA",
+    ):
+        if stale_syswm in source:
+            raise AssertionError(
+                f"{source_name} still depends on SDL SysWM token {stale_syswm}"
+            )
+if "#define SDL_GetWindowWMInfo" in compat:
+    raise AssertionError("native compatibility layer still remaps SDL_GetWindowWMInfo")
 require(sdlmain_cpp, "SDL_WINDOWEVENT_DISPLAY_CHANGED",
         "macOS display changes must refresh output geometry")
 require(sdlmain_cpp, "static int GFX_GetActiveDisplayIndex()",
         "SDL2 display sizing must follow the active window display")
 require(sdlmain_cpp, "SDL_GetWindowDisplayIndex(sdl.window)",
         "active display lookup must use the current window")
+require(menu, "#if defined(C_SDL2) && !(defined(C_NATIVE_MACOS) && C_NATIVE_MACOS)",
+        "SDL headers in menu_macos must be legacy-backend-only")
 require(menu, 'NSScreen *screen = [wnd screen];',
         "macOS DPI helper must use AppKit's authoritative window screen")
 require(menu, 'CGDisplayModeGetPixelWidth(mode)',
