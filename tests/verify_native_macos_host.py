@@ -48,6 +48,11 @@ clipboard_cpp = read("src/misc/clipboard.cpp")
 menu_cpp = read("src/gui/menu.cpp")
 sdl_gui = read("src/gui/sdl_gui.cpp")
 sdlmain_cpp = read("src/gui/sdlmain.cpp")
+midi_cpp = read("src/gui/midi.cpp")
+sdl_mapper = read("src/gui/sdl_mapper.cpp")
+sdl_ttf = read("src/gui/sdl_ttf.c")
+savestates_cpp = read("src/misc/savestates.cpp")
+support_cpp = read("src/misc/support.cpp")
 
 require(build, 'macos_backend="${DOSBOX_MACOS_BACKEND:-native}"',
         "build-macos must default to native")
@@ -259,6 +264,31 @@ require(sdlmain_header, "#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)",
         "sdlmain must skip the SDL umbrella under the native ABI quarantine")
 require(native, '#include "native_macos_sdl_abi.h"',
         "native host must consume the project-owned ABI quarantine")
+native_umbrella_guard = """#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
+#include "SDL.h"
+#endif"""
+for source_name, source in (
+    ("menu.cpp", menu_cpp),
+    ("midi.cpp", midi_cpp),
+    ("sdl_gui.cpp", sdl_gui),
+    ("sdl_mapper.cpp", sdl_mapper),
+    ("sdl_ttf.c", sdl_ttf),
+    ("savestates.cpp", savestates_cpp),
+    ("support.cpp", support_cpp),
+):
+    require(source, native_umbrella_guard,
+            f"{source_name} must respect the native macOS SDL umbrella quarantine")
+
+if '#include "SDL_syswm.h"' in menu_cpp:
+    raise AssertionError("menu.cpp still carries an unused SDL SysWM dependency")
+require(sdl_gui, """#if defined(_WIN32) && !defined(HX_DOS)
+#include "SDL_syswm.h"
+#endif""",
+        "sdl_gui SysWM must stay Windows-only")
+require(sdl_mapper, """#if defined(_WIN32) && !defined(HX_DOS)
+#include "SDL_syswm.h"
+#endif""",
+        "sdl_mapper top-level SysWM must stay Windows-only")
 for forbidden_umbrella in ('#include "SDL.h"', '#include <SDL.h>',
                            '#include "SDL_syswm.h"', '#include <SDL_syswm.h>'):
     if forbidden_umbrella in native_macos_abi:
