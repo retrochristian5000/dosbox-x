@@ -41,8 +41,8 @@ require(build, 'orig_OBJCXXFLAGS="${OBJCXXFLAGS}"',
         "macOS build must preserve caller Objective-C++ flags")
 require(build, 'SDKROOT="$(bash "$top/scripts/resolve-macos-sdk.bash")"',
         "macOS build must resolve the active SDK")
-require(build, '"${CC:-cc}" ${arch_flags} -x c -fsyntax-only -',
-        "macOS build must probe system headers through the selected compiler")
+require(build, '"${CC:-cc}" ${CPPFLAGS} ${CFLAGS} -x c -fsyntax-only -',
+        "macOS build must probe system headers through the selected compiler and effective flags")
 require(sdk_resolver, 'xcrun --sdk macosx --show-sdk-path',
         "macOS SDK resolver must use the active Xcode SDK")
 require(sdk_resolver, '$sdk/usr/include/sys/types.h',
