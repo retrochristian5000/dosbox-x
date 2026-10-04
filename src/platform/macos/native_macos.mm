@@ -1123,6 +1123,13 @@ int SDLCALL mem_close(SDL_RWops *rw)
 }
 @end
 
+void *macosx_native_content_view(void)
+{
+    return main_window && main_window->view
+               ? (__bridge void *)main_window->view
+               : nullptr;
+}
+
 extern "C" {
 
 int SDLCALL DOSBoxMac_Init(Uint32 flags)
