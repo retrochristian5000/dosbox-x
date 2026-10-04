@@ -6,7 +6,9 @@
 #include <string>
 #include <cstring>
 #include <fstream>
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
+#endif
 #include "menu.h"
 #include "shell.h"
 #include "cross.h"
