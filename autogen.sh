@@ -12,6 +12,19 @@ success=0
 trap finish EXIT
 set -e
 
+# zlib is a pinned source dependency. Initialize only this gitlink so normal
+# builds do not recursively fetch the much larger LLVM toolchain submodule.
+if [ ! -f vs/zlib/zlib.h ]; then
+  if [ -d .git ] || [ -f .git ]; then
+    echo "Initializing pinned zlib source"
+    git submodule update --init --depth 1 -- vs/zlib
+  fi
+fi
+if [ ! -f vs/zlib/zlib.h ]; then
+  echo "autogen.sh: pinned zlib source is missing (vs/zlib)" >&2
+  exit 1
+fi
+
 echo "Generating build information using aclocal, autoheader, automake and autoconf"
 echo "This may take a while ..."
 

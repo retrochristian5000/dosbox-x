@@ -13,6 +13,7 @@ mingw = (ROOT / "build-mingw").read_text(encoding="utf-8")
 sln = (ROOT / "vs/dosbox-x.sln").read_text(encoding="utf-8", errors="replace")
 project = (ROOT / "vs/zlib-project/zlib.vcxproj").read_text(encoding="utf-8", errors="replace")
 wrapper = (ROOT / "build-scripts/zlib/build-dosbox.sh").read_text(encoding="utf-8")
+autogen = (ROOT / "autogen.sh").read_text(encoding="utf-8")
 
 for needle in (
     '[submodule "vs/zlib"]',
@@ -42,6 +43,13 @@ for needle in (
 ):
     if needle not in wrapper:
         raise AssertionError(f"missing external zlib build marker: {needle!r}")
+
+for needle in (
+    'git submodule update --init --depth 1 -- vs/zlib',
+    'pinned zlib source is missing (vs/zlib)',
+):
+    if needle not in autogen:
+        raise AssertionError(f"autogen zlib initialization missing: {needle!r}")
 
 for needle in (
     './build-scripts/zlib/build-dosbox.sh',

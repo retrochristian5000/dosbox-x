@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - '.gitmodules'
+      - 'autogen.sh'
       - 'vs/zlib'
       - 'vs/zlib-project/**'
       - 'build-scripts/zlib/**'
@@ -14,6 +15,7 @@ on:
   pull_request:
     paths:
       - '.gitmodules'
+      - 'autogen.sh'
       - 'vs/zlib'
       - 'vs/zlib-project/**'
       - 'build-scripts/zlib/**'
