@@ -22,6 +22,8 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - uses: actions/checkout@v7
+      - name: Initialize pinned zlib
+        run: git submodule update --init --depth 1 -- vs/zlib
       - uses: microsoft/setup-msbuild@v3
       - name: Prepare Visual Studio builds
         shell: bash
@@ -280,6 +282,8 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - uses: actions/checkout@v7
+      - name: Initialize pinned zlib
+        run: git submodule update --init --depth 1 -- vs/zlib
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW32
@@ -353,6 +357,8 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - uses: actions/checkout@v7
+      - name: Initialize pinned zlib
+        run: git submodule update --init --depth 1 -- vs/zlib
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
@@ -424,6 +430,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v7
+      - name: Initialize pinned zlib
+        run: git submodule update --init --depth 1 -- vs/zlib
       - name: Restore MinGW x86 builds (nightly)
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/cache/restore@v6

@@ -3,3 +3,9 @@
 	url = https://github.com/retrochristian5000/LLVM.git
 	branch = main
 	shallow = true
+
+[submodule "vs/zlib"]
+	path = vs/zlib
+	url = https://github.com/retrochristian5000/ZLIB.git
+	branch = master
+	shallow = true

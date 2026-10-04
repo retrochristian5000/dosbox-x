@@ -22,6 +22,8 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - uses: actions/checkout@v7
+      - name: Initialize pinned zlib
+        run: git submodule update --init --depth 1 -- vs/zlib
       - uses: microsoft/setup-msbuild@v3
       - name: Prepare Visual Studio Win32
         shell: bash
@@ -162,6 +164,8 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - uses: actions/checkout@v7
+      - name: Initialize pinned zlib
+        run: git submodule update --init --depth 1 -- vs/zlib
       - uses: microsoft/setup-msbuild@v3
       - name: Prepare Visual Studio ARM32
         shell: bash
