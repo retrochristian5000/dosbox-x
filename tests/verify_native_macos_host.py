@@ -41,6 +41,8 @@ sdlmain_header = read("include/sdlmain.h")
 mapper_header = read("include/mapper.h")
 codepage_header = read("include/codepage.h")
 macosx_host_header = read("include/macosx_host.h")
+native_macos_abi = read("include/native_macos_sdl_abi.h")
+include_makefile = read("include/Makefile.am")
 messages_cpp = read("src/misc/messages.cpp")
 clipboard_cpp = read("src/misc/clipboard.cpp")
 menu_cpp = read("src/gui/menu.cpp")
@@ -246,6 +248,25 @@ for api in (
     "SDL_RWFromFile",
 ):
     require(compat, f"#define {api}", f"native ABI remap for {api}")
+
+require(native_macos_abi, "#define DOSBOX_NATIVE_MACOS_SDL_ABI 1",
+        "native macOS ABI quarantine marker")
+require(compat, '#include "native_macos_sdl_abi.h"',
+        "native compatibility layer must load the quarantined ABI")
+require(include_makefile, "native_macos_sdl_abi.h",
+        "native ABI quarantine header must ship in source distributions")
+require(sdlmain_header, "#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)",
+        "sdlmain must skip the SDL umbrella under the native ABI quarantine")
+require(native, '#include "native_macos_sdl_abi.h"',
+        "native host must consume the project-owned ABI quarantine")
+for forbidden_umbrella in ('#include "SDL.h"', '#include <SDL.h>',
+                           '#include "SDL_syswm.h"', '#include <SDL_syswm.h>'):
+    if forbidden_umbrella in native_macos_abi:
+        raise AssertionError(
+            f"native ABI quarantine imports forbidden SDL umbrella: {forbidden_umbrella}"
+        )
+if '#include "SDL.h"' in native or '#include <SDL.h>' in native:
+    raise AssertionError("native_macos.mm still imports the SDL umbrella directly")
 
 for framework_marker in (
     "#import <AppKit/AppKit.h>",
