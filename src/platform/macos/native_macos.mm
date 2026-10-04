@@ -133,12 +133,79 @@ bool pop_event(SDL_Event *event)
     return true;
 }
 
+CGDirectDisplayID display_id_for_screen(NSScreen *screen)
+{
+    if (!screen)
+        return kCGNullDirectDisplay;
+    NSNumber *number = [[screen deviceDescription] objectForKey:@"NSScreenNumber"];
+    return number ? static_cast<CGDirectDisplayID>([number unsignedIntValue])
+                  : kCGNullDirectDisplay;
+}
+
 NSScreen *screen_for_index(const int index)
 {
     NSArray<NSScreen *> *screens = [NSScreen screens];
     if (index < 0 || index >= static_cast<int>([screens count]))
         return nil;
     return [screens objectAtIndex:static_cast<NSUInteger>(index)];
+}
+
+int screen_index(NSScreen *screen)
+{
+    const CGDirectDisplayID target = display_id_for_screen(screen);
+    if (target == kCGNullDirectDisplay)
+        return -1;
+
+    NSArray<NSScreen *> *screens = [NSScreen screens];
+    for (NSUInteger i = 0; i < [screens count]; ++i) {
+        if (display_id_for_screen([screens objectAtIndex:i]) == target)
+            return static_cast<int>(i);
+    }
+    return -1;
+}
+
+int display_index_from_window_position(const int position)
+{
+    if (SDL_WINDOWPOS_ISCENTERED(position) || SDL_WINDOWPOS_ISUNDEFINED(position))
+        return position & 0xffff;
+    return -1;
+}
+
+NSScreen *screen_for_window_position(const int x, const int y)
+{
+    int index = display_index_from_window_position(x);
+    if (index < 0)
+        index = display_index_from_window_position(y);
+    NSScreen *screen = screen_for_index(index);
+    return screen ? screen : [NSScreen mainScreen];
+}
+
+NSScreen *screen_for_window(SDL_Window *window)
+{
+    if (window && window->nswindow && [window->nswindow screen])
+        return [window->nswindow screen];
+    return [NSScreen mainScreen];
+}
+
+CGFloat cocoa_desktop_top()
+{
+    const CGRect mainBounds = CGDisplayBounds(CGMainDisplayID());
+    return CGRectGetMaxY(mainBounds);
+}
+
+NSRect cocoa_content_rect_from_sdl(const CGFloat x, const CGFloat y,
+                                   const CGFloat w, const CGFloat h)
+{
+    return NSMakeRect(x, cocoa_desktop_top() - y - h, w, h);
+}
+
+NSRect sdl_content_rect_from_window(SDL_Window *window)
+{
+    if (!window || !window->nswindow)
+        return NSZeroRect;
+    NSRect rect = [window->nswindow contentRectForFrameRect:[window->nswindow frame]];
+    rect.origin.y = cocoa_desktop_top() - rect.origin.y - rect.size.height;
+    return rect;
 }
 
 SDL_Keymod modifiers_from_flags(const NSEventModifierFlags flags)
@@ -945,6 +1012,44 @@ int SDLCALL mem_close(SDL_RWops *rw)
     event.window.data2 = h;
     push_event(event);
 }
+
+- (void)windowDidChangeScreen:(NSNotification *)notification
+{
+    (void)notification;
+    if (!self.owner)
+        return;
+    SDL_Event event = {};
+    event.type = SDL_WINDOWEVENT;
+    event.window.event = SDL_WINDOWEVENT_DISPLAY_CHANGED;
+    event.window.data1 = screen_index(screen_for_window(self.owner));
+    push_event(event);
+}
+
+- (void)windowDidChangeBackingProperties:(NSNotification *)notification
+{
+    (void)notification;
+    if (!self.owner)
+        return;
+    SDL_Event event = {};
+    event.type = SDL_WINDOWEVENT;
+    event.window.event = SDL_WINDOWEVENT_DISPLAY_CHANGED;
+    event.window.data1 = screen_index(screen_for_window(self.owner));
+    push_event(event);
+}
+
+- (void)windowDidEnterFullScreen:(NSNotification *)notification
+{
+    (void)notification;
+    if (self.owner)
+        self.owner->flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+}
+
+- (void)windowDidExitFullScreen:(NSNotification *)notification
+{
+    (void)notification;
+    if (self.owner)
+        self.owner->flags &= ~(SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+}
 @end
 
 extern "C" {
@@ -1072,20 +1177,26 @@ SDL_Window *SDLCALL DOSBoxMac_CreateWindow(const char *title, int x, int y,
         if (flags & SDL_WINDOW_RESIZABLE)
             style |= NSWindowStyleMaskResizable;
 
-        NSScreen *screen = [NSScreen mainScreen];
-        NSRect screenFrame = screen ? [screen frame] : NSMakeRect(0, 0, 1440, 900);
-        CGFloat px = (x == SDL_WINDOWPOS_CENTERED || SDL_WINDOWPOS_ISCENTERED(x))
-                         ? NSMidX(screenFrame) - w / 2.0
-                         : static_cast<CGFloat>(x);
-        CGFloat py = (y == SDL_WINDOWPOS_CENTERED || SDL_WINDOWPOS_ISCENTERED(y))
-                         ? NSMidY(screenFrame) - h / 2.0
-                         : NSMaxY(screenFrame) - static_cast<CGFloat>(y) - h;
+        NSScreen *screen = screen_for_window_position(x, y);
+        const NSRect screenFrame = screen ? [screen frame] : NSMakeRect(0, 0, 1440, 900);
+        const CGFloat width = std::max(w, 1);
+        const CGFloat height = std::max(h, 1);
 
-        NSRect rect = NSMakeRect(px, py, std::max(w, 1), std::max(h, 1));
+        const bool centered = SDL_WINDOWPOS_ISCENTERED(x) || SDL_WINDOWPOS_ISCENTERED(y);
+        const bool undefined = SDL_WINDOWPOS_ISUNDEFINED(x) || SDL_WINDOWPOS_ISUNDEFINED(y);
+        CGFloat px = centered || undefined
+                         ? NSMidX(screenFrame) - width / 2.0
+                         : static_cast<CGFloat>(x);
+        CGFloat py = centered || undefined
+                         ? NSMidY(screenFrame) - height / 2.0
+                         : cocoa_desktop_top() - static_cast<CGFloat>(y) - height;
+
+        NSRect rect = NSMakeRect(px, py, width, height);
         window->nswindow = [[NSWindow alloc] initWithContentRect:rect
                                                        styleMask:style
                                                          backing:NSBackingStoreBuffered
-                                                           defer:NO];
+                                                           defer:NO
+                                                          screen:screen];
         if (!window->nswindow) {
             delete window;
             set_error("AppKit could not create an NSWindow");
@@ -1093,9 +1204,17 @@ SDL_Window *SDLCALL DOSBoxMac_CreateWindow(const char *title, int x, int y,
         }
 
         window->flags = flags | SDL_WINDOW_SHOWN;
+        [window->nswindow setColorSpace:[NSColorSpace sRGBColorSpace]];
+        [window->nswindow setOneShot:NO];
+        [window->nswindow setAcceptsMouseMovedEvents:YES];
+        [window->nswindow setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+        if ([window->nswindow respondsToSelector:@selector(setTabbingMode:)])
+            [window->nswindow setTabbingMode:NSWindowTabbingModeDisallowed];
+
         window->view = [[DOSBoxMacSurfaceView alloc] initWithFrame:
-                        NSMakeRect(0, 0, std::max(w, 1), std::max(h, 1))];
+                        NSMakeRect(0, 0, width, height)];
         window->view.owner = window;
+        window->view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
         [window->nswindow setContentView:window->view];
 
         window->delegate = [[DOSBoxMacWindowDelegate alloc] init];
@@ -1157,39 +1276,46 @@ void SDLCALL DOSBoxMac_SetWindowPosition(SDL_Window *window, int x, int y)
 {
     if (!window || !window->nswindow)
         return;
-    NSScreen *screen = [NSScreen mainScreen];
+
+    NSScreen *screen = screen_for_window_position(x, y);
     const NSRect screenFrame = screen ? [screen frame] : NSMakeRect(0, 0, 1440, 900);
-    NSRect frame = [window->nswindow frame];
+    NSRect content = [window->nswindow contentRectForFrameRect:[window->nswindow frame]];
+
     if (SDL_WINDOWPOS_ISCENTERED(x))
-        frame.origin.x = NSMidX(screenFrame) - frame.size.width / 2.0;
+        content.origin.x = NSMidX(screenFrame) - content.size.width / 2.0;
     else if (!SDL_WINDOWPOS_ISUNDEFINED(x))
-        frame.origin.x = x;
+        content.origin.x = static_cast<CGFloat>(x);
 
     if (SDL_WINDOWPOS_ISCENTERED(y))
-        frame.origin.y = NSMidY(screenFrame) - frame.size.height / 2.0;
+        content.origin.y = NSMidY(screenFrame) - content.size.height / 2.0;
     else if (!SDL_WINDOWPOS_ISUNDEFINED(y))
-        frame.origin.y = NSMaxY(screenFrame) - y - frame.size.height;
-    [window->nswindow setFrameOrigin:frame.origin];
+        content.origin.y = cocoa_desktop_top() - static_cast<CGFloat>(y) - content.size.height;
+
+    [window->nswindow setFrame:[window->nswindow frameRectForContentRect:content] display:YES];
 }
 
 void SDLCALL DOSBoxMac_GetWindowPosition(SDL_Window *window, int *x, int *y)
 {
     if (!window || !window->nswindow)
         return;
-    NSScreen *screen = [NSScreen mainScreen];
-    const NSRect screenFrame = screen ? [screen frame] : NSMakeRect(0, 0, 1440, 900);
-    const NSRect frame = [window->nswindow frame];
+    const NSRect rect = sdl_content_rect_from_window(window);
     if (x)
-        *x = static_cast<int>(std::lround(frame.origin.x));
+        *x = static_cast<int>(std::lround(rect.origin.x));
     if (y)
-        *y = static_cast<int>(std::lround(NSMaxY(screenFrame) - NSMaxY(frame)));
+        *y = static_cast<int>(std::lround(rect.origin.y));
 }
 
 void SDLCALL DOSBoxMac_SetWindowSize(SDL_Window *window, int w, int h)
 {
     if (!window || !window->nswindow)
         return;
-    [window->nswindow setContentSize:NSMakeSize(std::max(w, 1), std::max(h, 1))];
+
+    NSRect content = [window->nswindow contentRectForFrameRect:[window->nswindow frame]];
+    const CGFloat top = NSMaxY(content);
+    content.size = NSMakeSize(std::max(w, 1), std::max(h, 1));
+    content.origin.y = top - content.size.height;
+    [window->nswindow setFrame:[window->nswindow frameRectForContentRect:content] display:YES];
+
     if (window->surface && (window->surface->w != w || window->surface->h != h)) {
         DOSBoxMac_FreeSurface(window->surface);
         window->surface = nullptr;
@@ -1309,7 +1435,8 @@ int SDLCALL DOSBoxMac_GetWindowDisplayMode(SDL_Window *window, SDL_DisplayMode *
         *mode = window->mode;
         return 0;
     }
-    return DOSBoxMac_GetCurrentDisplayMode(0, mode);
+    const int display = DOSBoxMac_GetWindowDisplayIndex(window);
+    return DOSBoxMac_GetCurrentDisplayMode(display >= 0 ? display : 0, mode);
 }
 
 int SDLCALL DOSBoxMac_GetDesktopDisplayMode(int display, SDL_DisplayMode *mode)
@@ -1322,14 +1449,21 @@ int SDLCALL DOSBoxMac_GetCurrentDisplayMode(int display, SDL_DisplayMode *mode)
     if (!mode)
         return -1;
     NSScreen *screen = screen_for_index(display);
-    if (!screen)
+    const CGDirectDisplayID display_id = display_id_for_screen(screen);
+    if (!screen || display_id == kCGNullDirectDisplay)
         return -1;
-    const NSRect frame = [screen frame];
+
+    CGDisplayModeRef cgmode = CGDisplayCopyDisplayMode(display_id);
+    if (!cgmode)
+        return -1;
+
     mode->format = SDL_PIXELFORMAT_BGRA32;
-    mode->w = static_cast<int>(std::lround(frame.size.width * [screen backingScaleFactor]));
-    mode->h = static_cast<int>(std::lround(frame.size.height * [screen backingScaleFactor]));
-    mode->refresh_rate = 0;
+    mode->w = static_cast<int>(CGDisplayModeGetWidth(cgmode));
+    mode->h = static_cast<int>(CGDisplayModeGetHeight(cgmode));
+    const double refresh = CGDisplayModeGetRefreshRate(cgmode);
+    mode->refresh_rate = refresh > 0.0 ? static_cast<int>(std::lround(refresh)) : 0;
     mode->driverdata = nullptr;
+    CGDisplayModeRelease(cgmode);
     return 0;
 }
 
@@ -1338,19 +1472,32 @@ int SDLCALL DOSBoxMac_GetDisplayBounds(int display, SDL_Rect *rect)
     if (!rect)
         return -1;
     NSScreen *screen = screen_for_index(display);
-    if (!screen)
+    const CGDirectDisplayID display_id = display_id_for_screen(screen);
+    if (!screen || display_id == kCGNullDirectDisplay)
         return -1;
-    const NSRect frame = [screen frame];
-    rect->x = static_cast<int>(std::lround(frame.origin.x));
-    rect->y = static_cast<int>(std::lround(frame.origin.y));
-    rect->w = static_cast<int>(std::lround(frame.size.width));
-    rect->h = static_cast<int>(std::lround(frame.size.height));
+
+    const CGRect bounds = CGDisplayBounds(display_id);
+    rect->x = static_cast<int>(std::lround(bounds.origin.x));
+    rect->y = static_cast<int>(std::lround(bounds.origin.y));
+    rect->w = static_cast<int>(std::lround(bounds.size.width));
+    rect->h = static_cast<int>(std::lround(bounds.size.height));
     return 0;
 }
 
 int SDLCALL DOSBoxMac_GetNumVideoDisplays(void)
 {
     return static_cast<int>([[NSScreen screens] count]);
+}
+
+int SDLCALL DOSBoxMac_GetWindowDisplayIndex(SDL_Window *window)
+{
+    if (!window || !window->nswindow)
+        return -1;
+    const int index = screen_index([window->nswindow screen]);
+    if (index >= 0)
+        return index;
+    set_error("Could not determine the display containing the native macOS window");
+    return -1;
 }
 
 void SDLCALL DOSBoxMac_SetWindowKeyboardGrab(SDL_Window *window, SDL_bool grabbed)
