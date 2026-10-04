@@ -88,15 +88,6 @@ for arch in ${architectures}; do
     do_cleanup
 
     arch_flags="-arch ${arch} -mmacosx-version-min=10.13 "
-
-    # Validate the selected compiler against the same SDK that all dependency
-    # sub-builds inherit. A missing sys/types.h here is an SDK/sysroot problem,
-    # not a zlib include-order problem.
-    printf '#include <sys/types.h>\nstatic off_t dosbox_x_off;\nint main(void) { return dosbox_x_off != 0; }\n' |
-        "${CC:-cc}" ${arch_flags} -x c -fsyntax-only - || {
-            echo "macOS SDK/compiler probe failed for ${arch}: $SDKROOT/usr/include/sys/types.h" >&2
-            exit 1
-        }
     CFLAGS="${arch_flags}${orig_CFLAGS}"
     CXXFLAGS="${arch_flags}${orig_CXXFLAGS}"
     OBJCXXFLAGS="${arch_flags}${orig_OBJCXXFLAGS}"
@@ -104,6 +95,17 @@ for arch in ${architectures}; do
     LDFLAGS="${orig_LDFLAGS}"
     LIBS="${orig_LIBS}"
     export CFLAGS CXXFLAGS OBJCXXFLAGS CPPFLAGS LDFLAGS LIBS
+
+    # Validate the selected compiler against the same SDK and caller flags that
+    # all dependency sub-builds inherit. This catches stale -isysroot,
+    # --sysroot, -nostdinc, and related header-search overrides immediately.
+    printf '#include <sys/types.h>\nstatic off_t dosbox_x_off;\nint main(void) { return dosbox_x_off != 0; }\n' |
+        "${CC:-cc}" ${CPPFLAGS} ${CFLAGS} -x c -fsyntax-only - || {
+            echo "macOS SDK/compiler probe failed for ${arch}: $SDKROOT/usr/include/sys/types.h" >&2
+            echo "CPPFLAGS=${CPPFLAGS}" >&2
+            echo "CFLAGS=${CFLAGS}" >&2
+            exit 1
+        }
 
     if [ "${macos_backend}" = "sdl2" ]; then
         # Explicit legacy fallback. Keep SDL isolated to this backend.
