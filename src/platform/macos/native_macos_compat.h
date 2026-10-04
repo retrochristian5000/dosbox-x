@@ -53,6 +53,7 @@
 #define SDL_GetCurrentDisplayMode       DOSBoxMac_GetCurrentDisplayMode
 #define SDL_GetDisplayBounds            DOSBoxMac_GetDisplayBounds
 #define SDL_GetNumVideoDisplays         DOSBoxMac_GetNumVideoDisplays
+#define SDL_GetWindowDisplayIndex       DOSBoxMac_GetWindowDisplayIndex
 #define SDL_SetWindowKeyboardGrab       DOSBoxMac_SetWindowKeyboardGrab
 #define SDL_GetWindowKeyboardGrab       DOSBoxMac_GetWindowKeyboardGrab
 #define SDL_GetWindowWMInfo             DOSBoxMac_GetWindowWMInfo
