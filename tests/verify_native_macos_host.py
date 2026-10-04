@@ -264,6 +264,9 @@ for native_display_marker in (
     "DOSBoxMac_GetWindowDisplayIndex",
     "windowDidChangeBackingProperties:",
     "windowDidChangeScreen:",
+    "windowWillEnterFullScreen:",
+    "windowDidFailToEnterFullScreen:",
+    "windowDidFailToExitFullScreen:",
 ):
     require(native, native_display_marker,
             f"native AppKit/CoreGraphics display integration for {native_display_marker}")
@@ -276,6 +279,12 @@ require(metal, "layer.framebufferOnly = YES;",
         "Metal drawable should use framebuffer-only optimization")
 require(sdlmain_cpp, "SDL_WINDOWEVENT_DISPLAY_CHANGED",
         "macOS display changes must refresh output geometry")
+require(sdlmain_cpp, "static int GFX_GetActiveDisplayIndex()",
+        "SDL2 display sizing must follow the active window display")
+require(sdlmain_cpp, "SDL_GetWindowDisplayIndex(sdl.window)",
+        "active display lookup must use the current window")
+if "FIXME display index" in sdlmain_cpp:
+    raise AssertionError("stale primary-display fallback remains in SDL2 display sizing")
 
 for entry in (
     "DOSBoxMac_CreateWindow",
