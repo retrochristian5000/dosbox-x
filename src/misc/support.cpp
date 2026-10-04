@@ -35,7 +35,9 @@
 #include "support.h"
 #include "video.h"
 #include "menu.h"
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
+#endif
 
 extern bool gbk, isDBCSCP(), isKanji1(uint8_t chr), shiftjis_lead_byte(int c);
 
