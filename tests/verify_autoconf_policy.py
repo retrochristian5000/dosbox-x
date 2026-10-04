@@ -30,6 +30,10 @@ for needle, label in {
     forbid(needle, label)
 
 for needle, label in {
+    "c11_supported=yes": "C11 probe must keep M4 errors outside custom flag callbacks",
+    "AS_IF([test \"x$c11_supported\" != xyes]": "C11 failure must be handled by Autoconf",
+    "cxx14_supported=yes": "C++14 probe must keep M4 errors outside custom flag callbacks",
+    "AS_IF([test \"x$cxx14_supported\" != xyes]": "C++14 failure must be handled by Autoconf",
     "AC_CONFIG_HEADERS([config.h])": "modern config header declaration",
     "[enable_force_menu_sdldraw=$enableval]": "force-menu option must respect --disable",
     "[enable_hx=$enableval]": "HX option must respect --disable",
@@ -43,5 +47,12 @@ if CONFIGURE.count("AC_CHECK_LIB(GL, main") != 1:
     raise AssertionError("OpenGL library probe must have exactly one source of truth")
 if CONFIGURE.count("AC_CHECK_HEADER(d3d9.h") != 1:
     raise AssertionError("Direct3D 9 header probe must have exactly one source of truth")
+
+for bad in (
+    "AC_CHECK_CFLAGS([-std=gnu11], [],\n      [AC_MSG_ERROR",
+    "AC_CHECK_CXXFLAGS([-std=gnu++14], [],\n      [AC_MSG_ERROR",
+):
+    if bad in CONFIGURE:
+        raise AssertionError("M4 macro callback is overquoted inside custom compiler flag probe")
 
 print("Autoconf policy: ok")

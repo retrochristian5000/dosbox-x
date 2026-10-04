@@ -239,7 +239,9 @@ dnl to gnu11/gnu++14 after the user requested a newer standard.
 case " $CFLAGS " in
   *" -std="*) ;;
   *)
-    AC_CHECK_CFLAGS([-std=gnu11], [],
+    c11_supported=yes
+    AC_CHECK_CFLAGS([-std=gnu11], [], [c11_supported=no])
+    AS_IF([test "x$c11_supported" != xyes],
       [AC_MSG_ERROR([Your C compiler must support C11 or better])])
     ;;
 esac
@@ -247,7 +249,9 @@ esac
 case " $CXXFLAGS " in
   *" -std="*) ;;
   *)
-    AC_CHECK_CXXFLAGS([-std=gnu++14], [],
+    cxx14_supported=yes
+    AC_CHECK_CXXFLAGS([-std=gnu++14], [], [cxx14_supported=no])
+    AS_IF([test "x$cxx14_supported" != xyes],
       [AC_MSG_ERROR([Your C++ compiler must support C++14 or better])])
     ;;
 esac
