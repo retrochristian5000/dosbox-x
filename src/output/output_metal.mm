@@ -11,6 +11,7 @@
 #include "vga.h"
 #include "../ints/int10.h"
 #include "output_surface.h"
+#include "output_tools.h"
 
 #include <string>
 #include <vector>
