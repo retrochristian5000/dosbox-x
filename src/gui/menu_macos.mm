@@ -7,9 +7,12 @@
 #include "mapper.h"
 #include "macosx_host.h"
 #include "sdlmain.h"
-#include "SDL.h"
-#include "SDL_version.h"
-#include "SDL_syswm.h"
+
+#if defined(C_SDL2) && !(defined(C_NATIVE_MACOS) && C_NATIVE_MACOS)
+# include "SDL.h"
+# include "SDL_version.h"
+# include "SDL_syswm.h"
+#endif
 
 #if defined(MACOSX)
 # include <MacTypes.h>
@@ -39,20 +42,38 @@
 extern "C" void* sdl1_hax_stock_macosx_menu(void);
 extern "C" void sdl1_hax_stock_macosx_menu_additem(NSMenu *modme);
 extern "C" NSWindow *sdl1_hax_get_window(void);
+#endif
+
+static NSWindow *macosx_active_window(void)
+{
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    return (NSWindow *)macosx_native_window();
+#elif defined(C_SDL2)
+    SDL_SysWMinfo wminfo = {};
+    SDL_VERSION(&wminfo.version);
+    if (SDL_GetWindowWMInfo(GFX_GetSDLWindow(), &wminfo) >= 0 &&
+        wminfo.subsystem == SDL_SYSWM_COCOA)
+        return wminfo.info.cocoa.window;
+    return nil;
+#else
+    return sdl1_hax_get_window();
+#endif
+}
+
+void *macosx_content_view(void)
+{
+    NSWindow *wnd = macosx_active_window();
+    return wnd ? (void *)[wnd contentView] : nullptr;
+}
+
+#if !defined(C_SDL2)
 void SetAlpha(double alpha) {
-	NSWindow *wnd = sdl1_hax_get_window();
-	if (wnd != nil) wnd.alphaValue = alpha;
+    NSWindow *wnd = macosx_active_window();
+    if (wnd != nil) wnd.alphaValue = alpha;
 }
 #else
 void sdl1_hax_set_topmost(unsigned char topmost) {
-    SDL_SysWMinfo wminfo = {};
-    SDL_VERSION(&wminfo.version);
-    NSWindow *wnd = nil;
-    if (SDL_GetWindowWMInfo(GFX_GetSDLWindow(),&wminfo) >= 0) {
-        if (wminfo.subsystem == SDL_SYSWM_COCOA && wminfo.info.cocoa.window != NULL) {
-            wnd = wminfo.info.cocoa.window;
-        }
-    }
+    NSWindow *wnd = macosx_active_window();
     if (wnd != nil) {
         if (topmost)
             [ wnd setLevel: NSStatusWindowLevel ];
@@ -64,19 +85,7 @@ void sdl1_hax_set_topmost(unsigned char topmost) {
 
 #if defined(MACOSX)
 void MacOSEnableWindowCapture(unsigned int enable) {
-    NSWindow *wnd = nil;
-
-# if defined(C_SDL2)
-    SDL_SysWMinfo wminfo = {};
-    SDL_VERSION(&wminfo.version);
-    if (SDL_GetWindowWMInfo(GFX_GetSDLWindow(),&wminfo) >= 0) {
-        if (wminfo.subsystem == SDL_SYSWM_COCOA && wminfo.info.cocoa.window != NULL) {
-            wnd = wminfo.info.cocoa.window;
-        }
-    }
-# else
-    wnd = sdl1_hax_get_window();
-# endif
+    NSWindow *wnd = macosx_active_window();
 
     if (wnd) {
         [wnd setSharingType:(enable?NSWindowSharingReadOnly:NSWindowSharingNone)];
@@ -422,23 +431,9 @@ extern "C" int sdl1_hax_macosx_window_to_monitor_and_update(CGDirectDisplayID *d
 static int my_quartz_match_window_to_monitor(CGDirectDisplayID *new_id, NSWindow *wnd);
 
 void macosx_GetWindowDPI(ScreenSizeInfo &info) {
-    NSWindow *wnd = nil;
+    NSWindow *wnd = macosx_active_window();
 
     info.clear();
-
-#if !defined(C_SDL2)
-    wnd = sdl1_hax_get_window();
-#else
-
-    SDL_SysWMinfo wminfo = {};
-    SDL_VERSION(&wminfo.version);
-
-    if (SDL_GetWindowWMInfo(GFX_GetSDLWindow(),&wminfo) >= 0) {
-        if (wminfo.subsystem == SDL_SYSWM_COCOA && wminfo.info.cocoa.window != NULL) {
-            wnd = wminfo.info.cocoa.window;
-        }
-    }
-#endif
 
     if (wnd != nil) {
         CGDirectDisplayID did = 0;
