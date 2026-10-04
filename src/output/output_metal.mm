@@ -12,6 +12,9 @@
 #include "../ints/int10.h"
 #include "output_surface.h"
 
+#include <string>
+#include <vector>
+
 #if defined(MACOSX) && C_METAL
 #if defined(C_SDL2)
 
@@ -29,7 +32,63 @@
 
 extern VGA_Type vga;
 extern VideoModeBlock* CurMode;
- 
+
+class CMetal {
+public:
+    CMetal();
+    ~CMetal();
+
+    bool Initialize(void* nsview, int w, int h);
+    void Shutdown();
+
+    bool StartUpdate(uint8_t*& pixels, Bitu& pitch);
+    void EndUpdate();
+
+    bool Resize(uint32_t window_w, uint32_t window_h,
+        uint32_t tex_w, uint32_t tex_h);
+
+    void ResizeCPUBuffer(uint32_t src_w, uint32_t src_h);
+    bool CreateSampler();
+    void GetRenderMode();
+    bool CreatePipeline();
+    bool CreateFrameTexture(uint32_t w, uint32_t h);
+    void SetSamplerMode(id<MTLRenderCommandEncoder> encoder);
+    void CheckSourceResolution();
+
+    uint32_t frame_width = 0;
+    uint32_t frame_height = 0;
+
+    int cpu_pitch = 0;
+    std::vector<uint8_t> cpu_buffer;
+    uint32_t window_width = 0;
+    uint32_t window_height = 0;
+    uint32_t last_window_w = 0;
+    uint32_t last_window_h = 0;
+    uint32_t last_tex_w = 0;
+    uint32_t last_tex_h = 0;
+    uint32_t last_scalesize = 0;
+    bool was_fullscreen = false;
+
+private:
+    NSView* view = nil;
+    NSView* metalView = nil;
+
+    id<MTLDevice> device = nil;
+    id<MTLCommandQueue> queue = nil;
+    id<MTLCommandBuffer> submittedFrame = nil;
+    CAMetalLayer* layer = nil;
+
+    id<MTLTexture> frameTexture = nil;
+    id<MTLSamplerState> samplerNearest = nil;
+    id<MTLSamplerState> samplerLinear = nil;
+    id<MTLRenderPipelineState> pipeline = nil;
+
+    bool textureMapped = false;
+    int current_render_mode = ASPECT_NEAREST;
+    MTLViewport currentViewport = {};
+};
+
+
 CMetal::CMetal() {}
 CMetal::~CMetal() { Shutdown(); }
 
