@@ -20,7 +20,9 @@
 #pragma warning(disable:4065) /* Please do not warn on default case without other case statements */
 #endif
 
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
+#endif
 
 #include "dosbox.h"
 #include "menu.h"
@@ -72,7 +74,9 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#if defined(_WIN32) && !defined(HX_DOS)
 #include "SDL_syswm.h"
+#endif
 #include "sdlmain.h"
 #include "version_string.h"
 
