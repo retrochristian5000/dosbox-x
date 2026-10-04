@@ -22,8 +22,24 @@ rm -rf "$builddir" "$instdir"
 mkdir -p "$builddir" "$instdir/include" "$instdir/lib"
 
 cd "$builddir"
-"$srcdir/configure" || exit 1
-make -j || exit 1
+
+# DOSBox-X consumes only the static archive. Do not make the zlib build depend
+# on its shared-library or example-program link paths succeeding.
+"$srcdir/configure" --static || exit 1
+
+# zlib's Darwin configure path rewrites AR to Apple libtool. If the DOSBox-X
+# launcher selected an archiver explicitly (for example llvm-ar), preserve that
+# toolchain choice at make time. Otherwise keep zlib's platform default.
+if [ -n "${AR-}" ]; then
+    make AR="$AR" ARFLAGS="${ARFLAGS:-rc}" RANLIB="${RANLIB:-ranlib}" libz.a || exit 1
+else
+    make libz.a || exit 1
+fi
+
+if [ ! -s zconf.h ] || [ ! -s libz.a ]; then
+    echo "zlib build completed without the required staged inputs" >&2
+    exit 1
+fi
 
 cp -v "$srcdir/zlib.h" zconf.h "$instdir/include/" || exit 1
 cp -v libz.a "$instdir/lib/" || exit 1

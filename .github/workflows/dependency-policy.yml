@@ -34,3 +34,11 @@ jobs:
       - uses: actions/checkout@v7
       - name: Verify pinned zlib source boundary
         run: python3 tests/verify_zlib_source.py
+      - name: Build pinned static zlib through DOSBox-X wrapper
+        run: sh build-scripts/zlib/build-dosbox.sh
+      - name: Verify staged zlib outputs
+        run: |
+          test -s .build/zlib-host/lib/libz.a
+          test -s .build/zlib-host/include/zlib.h
+          test -s .build/zlib-host/include/zconf.h
+          ar t .build/zlib-host/lib/libz.a >/dev/null

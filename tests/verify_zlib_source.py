@@ -14,6 +14,7 @@ sln = (ROOT / "vs/dosbox-x.sln").read_text(encoding="utf-8", errors="replace")
 project = (ROOT / "vs/zlib-project/zlib.vcxproj").read_text(encoding="utf-8", errors="replace")
 wrapper = (ROOT / "build-scripts/zlib/build-dosbox.sh").read_text(encoding="utf-8")
 autogen = (ROOT / "autogen.sh").read_text(encoding="utf-8")
+workflow = (ROOT / ".github/workflows/dependency-policy.yml").read_text(encoding="utf-8")
 
 for needle in (
     '[submodule "vs/zlib"]',
@@ -40,6 +41,9 @@ for needle in (
     'git -C "$root" submodule update --init --depth 1 -- vs/zlib',
     '.build/zlib-build',
     '.build/zlib-host',
+    '"$srcdir/configure" --static',
+    'make AR="$AR" ARFLAGS="${ARFLAGS:-rc}" RANLIB="${RANLIB:-ranlib}" libz.a',
+    'make libz.a',
 ):
     if needle not in wrapper:
         raise AssertionError(f"missing external zlib build marker: {needle!r}")
@@ -69,3 +73,16 @@ for needle in ('..\\zlib\\adler32.c', '..\\zlib\\zlib.h'):
         raise AssertionError(f"Visual Studio is not compiling pinned zlib source: {needle!r}")
 
 print("pinned zlib policy: ok")
+
+if '"$srcdir/configure" || exit 1' in wrapper:
+    raise AssertionError("zlib wrapper must configure static-only")
+if "make -j || exit 1" in wrapper:
+    raise AssertionError("zlib wrapper must not build zlib shared/examples through the default all target")
+
+for needle in (
+    "sh build-scripts/zlib/build-dosbox.sh",
+    "test -s .build/zlib-host/lib/libz.a",
+    "test -s .build/zlib-host/include/zconf.h",
+):
+    if needle not in workflow:
+        raise AssertionError(f"dependency CI is not exercising zlib build wiring: {needle!r}")
