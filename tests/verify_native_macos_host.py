@@ -283,6 +283,12 @@ require(sdlmain_cpp, "static int GFX_GetActiveDisplayIndex()",
         "SDL2 display sizing must follow the active window display")
 require(sdlmain_cpp, "SDL_GetWindowDisplayIndex(sdl.window)",
         "active display lookup must use the current window")
+require(menu, 'NSScreen *screen = [wnd screen];',
+        "macOS DPI helper must use AppKit's authoritative window screen")
+require(menu, 'CGDisplayModeGetPixelWidth(mode)',
+        "macOS DPI must use backing-pixel width")
+require(menu, 'CGDisplayModeGetPixelHeight(mode)',
+        "macOS DPI must use backing-pixel height")
 if "FIXME display index" in sdlmain_cpp:
     raise AssertionError("stale primary-display fallback remains in SDL2 display sizing")
 
