@@ -87,7 +87,7 @@ for needle in (
     "clang++ -std=c++14",
     "Build pinned zlib with strict Clang header checks",
     "CFLAGS: -std=c11 -Wall -Wextra -Werror",
-    "AR: llvm-ar",
+    "AR: ar",
 ):
     if needle not in workflow:
         raise AssertionError(f"dependency CI is not exercising zlib build wiring: {needle!r}")
