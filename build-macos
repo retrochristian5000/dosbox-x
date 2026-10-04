@@ -26,6 +26,7 @@ orig_CFLAGS="${CFLAGS}"
 orig_LDFLAGS="${LDFLAGS}"
 orig_CPPFLAGS="${CPPFLAGS}"
 orig_CXXFLAGS="${CXXFLAGS}"
+orig_OBJCXXFLAGS="${OBJCXXFLAGS}"
 orig_LIBS="${LIBS}"
 
 # Remove our temporary copies of dosbox-x executable before rebuilding
@@ -86,10 +87,11 @@ for arch in ${architectures}; do
     arch_flags="-arch ${arch} -mmacosx-version-min=10.13 "
     CFLAGS="${arch_flags}${orig_CFLAGS}"
     CXXFLAGS="${arch_flags}${orig_CXXFLAGS}"
+    OBJCXXFLAGS="${arch_flags}${orig_OBJCXXFLAGS}"
     CPPFLAGS="${orig_CPPFLAGS}"
     LDFLAGS="${orig_LDFLAGS}"
     LIBS="${orig_LIBS}"
-    export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS LIBS
+    export CFLAGS CXXFLAGS OBJCXXFLAGS CPPFLAGS LDFLAGS LIBS
 
     if [ "${macos_backend}" = "sdl2" ]; then
         # Explicit legacy fallback. Keep SDL isolated to this backend.
@@ -136,7 +138,7 @@ for arch in ${architectures}; do
     LDFLAGS="${LDFLAGS}${nld}"
     CPPFLAGS="${CPPFLAGS}${new}"
     INTERNAL_FREETYPE=1
-    export CFLAGS LDFLAGS CPPFLAGS CXXFLAGS INTERNAL_FREETYPE
+    export CFLAGS LDFLAGS CPPFLAGS CXXFLAGS OBJCXXFLAGS INTERNAL_FREETYPE
 
     opts=
 
@@ -145,12 +147,10 @@ for arch in ${architectures}; do
         echo "Brew is installed, I'm going to use its libraries too"
         new="-I$(${!brew_cmd} --prefix)/include "
         nld="-L$(${!brew_cmd} --prefix)/lib "
-        CFLAGS="${CFLAGS}${new}"
         LDFLAGS="${LDFLAGS}${nld}"
         CPPFLAGS="${CPPFLAGS}${new}"
-        CXXFLAGS="${CXXFLAGS}${new}"
         PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(${!brew_cmd} --prefix)/lib/pkgconfig"
-        export CFLAGS LDFLAGS CPPFLAGS CXXFLAGS PKG_CONFIG_PATH
+        export CFLAGS LDFLAGS CPPFLAGS CXXFLAGS OBJCXXFLAGS PKG_CONFIG_PATH
     fi
 
     if [ "${universal}" = 1 ]; then
