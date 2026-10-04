@@ -30,6 +30,24 @@ Use `--profile NAME` (or an exact `build-*` filename) when host autodetection is
 Arguments after the profile are passed through to the selected backend; `--` may be used to end wrapper option parsing.
 The native Visual Studio workflow remains available through `./vs/dosbox-x.sln`.
 
+Pinned zlib source
+------------------
+
+This fork uses `retrochristian5000/ZLIB` as the zlib source at `vs/zlib`.
+The gitlink is the revision authority, currently pinned to zlib 1.3.2 commit
+`da607da739fa6047df13e66a2af6b8bec7c2a498`; builds do not float to the
+current branch tip.
+
+macOS builds the pinned source through `build-scripts/zlib/build-dosbox.sh`.
+Generated zlib state lives under `.build/zlib-build` and
+`.build/zlib-host`, outside the submodule checkout. Visual Studio keeps the
+DOSBox-X-specific project glue in `vs/zlib-project` while compiling source
+files directly from `vs/zlib`. MinGW continues to use its toolchain-provided
+zlib; the old disabled vendored-zlib fallback has been removed.
+
+After a non-recursive clone, initialize the dependency with
+`git submodule update --init --depth 1 -- vs/zlib`.
+
 Pinned LLVM toolchain
 ---------------------
 
