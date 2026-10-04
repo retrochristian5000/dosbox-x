@@ -10,7 +10,6 @@
 #define SDL_MAIN_HANDLED 1
 
 #include "SDL.h"
-#include "SDL_syswm.h"
 
 #import <AppKit/AppKit.h>
 #import <AudioUnit/AudioUnit.h>
@@ -1123,10 +1122,10 @@ int SDLCALL mem_close(SDL_RWops *rw)
 }
 @end
 
-void *macosx_native_content_view(void)
+void *macosx_native_window(void)
 {
-    return main_window && main_window->view
-               ? (__bridge void *)main_window->view
+    return main_window && main_window->nswindow
+               ? (__bridge void *)main_window->nswindow
                : nullptr;
 }
 
@@ -1589,17 +1588,6 @@ void SDLCALL DOSBoxMac_SetWindowKeyboardGrab(SDL_Window *window, SDL_bool grabbe
 SDL_bool SDLCALL DOSBoxMac_GetWindowKeyboardGrab(SDL_Window *window)
 {
     return window ? window->keyboard_grab : SDL_FALSE;
-}
-
-SDL_bool SDLCALL DOSBoxMac_GetWindowWMInfo(SDL_Window *window, SDL_SysWMinfo *info)
-{
-    if (!window || !info)
-        return SDL_FALSE;
-    info->subsystem = SDL_SYSWM_COCOA;
-#if defined(SDL_VIDEO_DRIVER_COCOA)
-    info->info.cocoa.window = window->nswindow;
-#endif
-    return SDL_TRUE;
 }
 
 int SDLCALL DOSBoxMac_ShowCursor(int toggle)
