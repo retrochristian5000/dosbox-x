@@ -114,7 +114,7 @@ for arch in ${architectures}; do
     fi
     export LDFLAGS CPPFLAGS LIBS
     
-    # prefer to compile against our own zlib
+    # build the pinned WHP zlib source
     echo "Compiling pinned WHP zlib fork"
     ./build-scripts/zlib/build-dosbox.sh || exit 1
     new="-I${top}/.build/zlib-host/include "
