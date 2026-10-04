@@ -21,6 +21,7 @@ ipx.h \
 ipxserver.h \
 keyboard.h \
 logging.h \
+macosx_host.h \
 mapper.h \
 mem.h \
 midi.h \

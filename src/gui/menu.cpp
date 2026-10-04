@@ -23,6 +23,7 @@
 #include "cpu.h"
 #include "render.h"
 #include "menu.h"
+#include "macosx_host.h"
 #include "menudef.h"
 #include "SDL.h"
 #include "SDL_syswm.h"
@@ -52,20 +53,6 @@ unsigned int SDLDrawGenFontTextureWidth = SDLDrawGenFontTextureUnitPerRow * 8;
 unsigned int SDLDrawGenFontTextureHeight = SDLDrawGenFontTextureRows * 16;
 bool SDLDrawGenFontTextureInit = false;
 GLuint SDLDrawGenFontTexture = (GLuint)(~0UL), SDLDrawGenDBCSFontTexture = (GLuint)(~0UL);
-#endif
-
-#if DOSBOXMENU_TYPE == DOSBOXMENU_NSMENU /* Mac OS X menu handle */
-void                                                sdl_hax_nsMenuAddApplicationMenu(void *nsMenu);
-void*                                               sdl_hax_nsMenuItemFromTag(void *nsMenu, unsigned int tag);
-void                                                sdl_hax_nsMenuItemUpdateFromItem(void *nsMenuItem, DOSBoxMenu::item &item);
-void                                                sdl_hax_nsMenuItemSetTag(void *nsMenuItem, unsigned int id);
-void                                                sdl_hax_nsMenuItemSetSubmenu(void *nsMenuItem,void *nsMenu);
-void                                                sdl_hax_nsMenuAddItem(void *nsMenu,void *nsMenuItem);
-void*                                               sdl_hax_nsMenuAllocSeparator(void);
-void*                                               sdl_hax_nsMenuAlloc(const char *initWithText);
-void                                                sdl_hax_nsMenuRelease(void *nsMenu);
-void*                                               sdl_hax_nsMenuItemAlloc(const char *initWithText);
-void                                                sdl_hax_nsMenuItemRelease(void *nsMenuItem);
 #endif
 
 void                                                reflectmenu_INITMENU_cb();
@@ -2105,8 +2092,6 @@ void DOSBox_SetMenu(DOSBoxMenu &altMenu) {
     (void)altMenu;
 #endif
 #if DOSBOXMENU_TYPE == DOSBOXMENU_NSMENU /* TODO: Move to menu.cpp DOSBox_SetMenu() and add setmenu(NULL) to DOSBox_NoMenu() @emendelson request showmenu=false */
-    void sdl_hax_macosx_setmenu(void *nsMenu);
-    void menu_macosx_set_menuobj(DOSBoxMenu *altMenu);
     sdl_hax_macosx_setmenu(altMenu.getNsMenu());
     menu_macosx_set_menuobj(&altMenu);
 #endif
@@ -2137,7 +2122,6 @@ void DOSBox_SetMenu(void) {
 #if DOSBOXMENU_TYPE == DOSBOXMENU_NSMENU /* TODO: Move to menu.cpp DOSBox_SetMenu() and add setmenu(NULL) to DOSBox_NoMenu() @emendelson request showmenu=false */
     if(!menu.gui) return;
     menu.toggle=true;
-    void sdl_hax_macosx_setmenu(void *nsMenu);
     sdl_hax_macosx_setmenu(mainMenu.getNsMenu());
 #endif
 #if DOSBOXMENU_TYPE == DOSBOXMENU_HMENU
@@ -2178,7 +2162,6 @@ void DOSBox_NoMenu(void) {
 #if DOSBOXMENU_TYPE == DOSBOXMENU_NSMENU
     if(!menu.gui) return;
     menu.toggle=false;
-    void sdl_hax_macosx_setmenu(void *nsMenu);
     sdl_hax_macosx_setmenu(NULL);
 #endif
 #if DOSBOXMENU_TYPE == DOSBOXMENU_HMENU

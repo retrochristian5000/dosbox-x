@@ -24,6 +24,7 @@
 
 #include "dosbox.h"
 #include "menu.h"
+#include "macosx_host.h"
 #include "../libs/gui_tk/gui_tk.h"
 
 #include "build_timestamp.h"
@@ -148,9 +149,6 @@ void                        WindowsTaskbarUpdatePreviewRegion(void);
 void                        WindowsTaskbarResetPreviewRegion(void);
 #endif
 
-#if defined(MACOSX)
-void                        macosx_reload_touchbar(void);
-#endif
 
 std::list<std::string> proplist = {};
 GUI::Checkbox *advopt, *saveall, *imgfd360, *imgfd400, *imgfd720, *imgfd1200, *imgfd1440, *imgfd2880, *imghd250, *imghd520, *imghd1gig, *imghd2gig, *imghd4gig, *imghd8gig;

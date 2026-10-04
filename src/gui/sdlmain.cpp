@@ -148,6 +148,7 @@ char* revert_escape_newlines(const char* aMessage);
 #include "bitop.h"
 #include "ptrop.h"
 #include "mapper.h"
+#include "macosx_host.h"
 #include "sdlmain.h"
 #include "zipfile.h"
 #include "glidedef.h"
@@ -344,13 +345,6 @@ extern PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
 
 #ifdef MACOSX
 #include <CoreGraphics/CoreGraphics.h>
-extern bool has_touch_bar_support;
-bool macosx_detect_nstouchbar(void);
-void macosx_init_touchbar(void);
-void macosx_GetWindowDPI(ScreenSizeInfo &info);
-int macosx_yesno(const char *title, const char *message);
-int macosx_yesnocancel(const char *title, const char *message);
-std::string macosx_prompt_folder(const char *default_folder);
 #endif
 
 #if defined(C_HAVE_DUKTAPE)
@@ -9583,10 +9577,8 @@ int main(int argc, char* argv[]) SDL_MAIN_NOEXCEPT {
             macosx_init_touchbar();
         }
 
-        extern void macosx_init_dock_menu(void);
         macosx_init_dock_menu();
 
-        void qz_set_match_monitor_cb(void);
         qz_set_match_monitor_cb();
 #endif
 
@@ -10727,7 +10719,6 @@ fresh_boot:
         SDL1_hax_SetMenu(NULL);/* detach menu from window, or else Windows will destroy the menu out from under the C++ class */
 #endif
 #if DOSBOXMENU_TYPE == DOSBOXMENU_NSMENU
-        void sdl_hax_macosx_setmenu(void *nsMenu);
         sdl_hax_macosx_setmenu(NULL);
 #endif
 #if C_DEBUG

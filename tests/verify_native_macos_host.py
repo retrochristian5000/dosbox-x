@@ -36,6 +36,7 @@ metal_header = read("src/output/output_metal.h")
 sdlmain_header = read("include/sdlmain.h")
 mapper_header = read("include/mapper.h")
 codepage_header = read("include/codepage.h")
+macosx_host_header = read("include/macosx_host.h")
 messages_cpp = read("src/misc/messages.cpp")
 clipboard_cpp = read("src/misc/clipboard.cpp")
 menu_cpp = read("src/gui/menu.cpp")
@@ -149,6 +150,29 @@ for source, label in (
 ):
     if "CodePageGuestToHostUTF8(char *d" in source or "InitCodePage();" in source:
         raise AssertionError(f"{label} still carries ad-hoc codepage forward declarations")
+
+for declaration in (
+    "bool macosx_detect_nstouchbar(void);",
+    "void macosx_init_touchbar(void);",
+    "void macosx_reload_touchbar(void);",
+    "void macosx_GetWindowDPI(ScreenSizeInfo &info);",
+    "void sdl_hax_macosx_setmenu(void *nsMenu);",
+    "void menu_macosx_set_menuobj(DOSBoxMenu *new_altMenu);",
+):
+    if declaration not in macosx_host_header:
+        raise AssertionError(f"macOS host declaration is missing from macosx_host.h: {declaration}")
+
+for stale, source, label in (
+    ("extern bool has_touch_bar_support;", sdlmain_cpp, "sdlmain.cpp"),
+    ("void macosx_reload_touchbar(void);", sdl_gui, "sdl_gui.cpp"),
+    ("void sdl_hax_nsMenuAddApplicationMenu(void *nsMenu);", menu_cpp, "menu.cpp"),
+    ("void sdl_hax_macosx_setmenu(void *nsMenu);", menu_cpp, "menu.cpp"),
+):
+    if stale in source:
+        raise AssertionError(f"{label} still hand-declares macOS host API: {stale}")
+
+if "#import" in macosx_host_header or "NSWindow" in macosx_host_header:
+    raise AssertionError("macosx_host.h must remain C++-safe and AppKit-opaque")
 
 for arc_source, label in ((native, "native_macos.mm"), (metal, "output_metal.mm")):
     if " release]" in arc_source or " autorelease]" in arc_source:

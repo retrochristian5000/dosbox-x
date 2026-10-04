@@ -5,6 +5,7 @@
 #include "dos_inc.h"
 #include "menu.h"
 #include "mapper.h"
+#include "macosx_host.h"
 #include "sdlmain.h"
 #include "SDL.h"
 #include "SDL_version.h"
