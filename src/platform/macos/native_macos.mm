@@ -1033,7 +1033,7 @@ int SDLCALL mem_close(SDL_RWops *rw)
 - (void)windowDidChangeScreen:(NSNotification *)notification
 {
     (void)notification;
-    if (!self.owner)
+    if (!self.owner || self.owner->fullscreen_transition)
         return;
     SDL_Event event = {};
     event.type = SDL_WINDOWEVENT;
@@ -1045,7 +1045,7 @@ int SDLCALL mem_close(SDL_RWops *rw)
 - (void)windowDidChangeBackingProperties:(NSNotification *)notification
 {
     (void)notification;
-    if (!self.owner)
+    if (!self.owner || self.owner->fullscreen_transition)
         return;
     SDL_Event event = {};
     event.type = SDL_WINDOWEVENT;
@@ -1106,6 +1106,26 @@ int SDLCALL mem_close(SDL_RWops *rw)
     resized.window.data1 = w;
     resized.window.data2 = h;
     push_event(resized);
+}
+
+- (void)windowDidFailToEnterFullScreen:(NSWindow *)window
+{
+    (void)window;
+    if (!self.owner)
+        return;
+    self.owner->fullscreen_transition = false;
+    self.owner->flags &= ~(SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+    set_error("AppKit failed to enter fullscreen");
+}
+
+- (void)windowDidFailToExitFullScreen:(NSWindow *)window
+{
+    (void)window;
+    if (!self.owner)
+        return;
+    self.owner->fullscreen_transition = false;
+    self.owner->flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+    set_error("AppKit failed to exit fullscreen");
 }
 @end
 
