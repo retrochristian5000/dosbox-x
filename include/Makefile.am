@@ -22,6 +22,7 @@ ipxserver.h \
 keyboard.h \
 logging.h \
 macosx_host.h \
+native_macos_sdl_abi.h \
 mapper.h \
 mem.h \
 midi.h \
