@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 top=$(pwd)
 if test -z "${top}" ; then exit 1; fi
@@ -6,11 +7,6 @@ if test -z "${top}" ; then exit 1; fi
 SDKROOT="$(bash "$top/scripts/resolve-macos-sdk.bash")" || exit 1
 export SDKROOT
 echo "Using macOS SDK: $SDKROOT"
-
-# I'm sick and tired of all the churn the three versions of autoconf
-# are causing in this repo. Stop committing the configure scripts
-# and just autoregen.
-./autogen.sh || exit 1
 
 macos_backend="${DOSBOX_MACOS_BACKEND:-native}"
 case "${macos_backend}" in
@@ -21,58 +17,189 @@ case "${macos_backend}" in
         ;;
 esac
 
+clean_build="${DOSBOX_CLEAN_BUILD:-0}"
+force_reconfigure="${DOSBOX_RECONFIGURE:-0}"
+case "${clean_build}" in 0|1) ;; *) echo "DOSBOX_CLEAN_BUILD must be 0 or 1" >&2; exit 2 ;; esac
+case "${force_reconfigure}" in 0|1) ;; *) echo "DOSBOX_RECONFIGURE must be 0 or 1" >&2; exit 2 ;; esac
+
+universal=0
+architectures="$(uname -m)"
+configure_args=()
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        universal|--universal)
+            if [ "${architectures}" = "arm64" ]; then
+                universal=1
+                architectures="arm64 x86_64"
+            fi
+            ;;
+        --clean)
+            clean_build=1
+            ;;
+        --reconfigure)
+            force_reconfigure=1
+            ;;
+        --)
+            shift
+            configure_args+=("$@")
+            break
+            ;;
+        *)
+            configure_args+=("$1")
+            ;;
+    esac
+    shift
+done
+
+mkdir -p "$top/.build"
+
+hash_stream() {
+    shasum -a 256 | awk '{print $1}'
+}
+
+autogen_input_key() {
+    {
+        for file in configure.ac acinclude.m4 autogen.sh Makefile.am; do
+            [ ! -f "$top/$file" ] || shasum -a 256 "$top/$file"
+        done
+        find "$top/include" "$top/src" -name Makefile.am -type f -print 2>/dev/null |
+            LC_ALL=C sort |
+            while IFS= read -r file; do
+                shasum -a 256 "$file"
+            done
+    } | hash_stream
+}
+
+autogen_stamp="$top/.build/autogen-input.key"
+current_autogen_key="$(autogen_input_key)"
+autogen_ran=0
+if [ ! -x "$top/configure" ] ||
+   [ ! -f "$autogen_stamp" ] ||
+   [ "$(cat "$autogen_stamp" 2>/dev/null || true)" != "$current_autogen_key" ]; then
+    echo "Autotools inputs changed; regenerating configure files"
+    ./autogen.sh || exit 1
+    printf '%s\n' "$current_autogen_key" > "$autogen_stamp"
+    autogen_ran=1
+else
+    echo "Autotools inputs unchanged; reusing generated configure files"
+fi
+
 if [ "${macos_backend}" = "sdl2" ]; then
     chmod +x vs/sdl2/build-dosbox.sh
 fi
 
-orig_CFLAGS="${CFLAGS}"
-orig_LDFLAGS="${LDFLAGS}"
-orig_CPPFLAGS="${CPPFLAGS}"
-orig_CXXFLAGS="${CXXFLAGS}"
-orig_OBJCXXFLAGS="${OBJCXXFLAGS}"
-orig_LIBS="${LIBS}"
+orig_CFLAGS="${CFLAGS:-}"
+orig_LDFLAGS="${LDFLAGS:-}"
+orig_CPPFLAGS="${CPPFLAGS:-}"
+orig_CXXFLAGS="${CXXFLAGS:-}"
+orig_OBJCXXFLAGS="${OBJCXXFLAGS:-}"
+orig_LIBS="${LIBS:-}"
+orig_PKG_CONFIG_PATH="${PKG_CONFIG_PATH:-}"
 
-# Remove our temporary copies of dosbox-x executable before rebuilding
-rm -f src/dosbox-x-arm64 src/dosbox-x-x86_64
+active_config="$top/.build/macos-active-config.key"
 
-do_cleanup() {
-    rm -rf vs/sdl2/linux-host vs/sdl2/linux-build
-    rm -rf .build/zlib-host .build/zlib-build
-    rm -rf vs/libpng/linux-host vs/libpng/linux-build
-    rm -rf vs/freetype/linux-host vs/freetype/linux-build
-    rm -rf vs/sdl2net/linux-host vs/sdl2net/linux-build
-    [ -e Makefile ] && make clean
+clean_dependency_builds() {
+    rm -rf "$top/vs/sdl2/linux-host" "$top/vs/sdl2/linux-build"
+    rm -rf "$top/.build/zlib-host" "$top/.build/zlib-build"
+    rm -rf "$top/vs/libpng/linux-host" "$top/vs/libpng/linux-build"
+    rm -rf "$top/vs/freetype/linux-host" "$top/vs/freetype/linux-build"
+    rm -rf "$top/vs/sdl2net/linux-host" "$top/vs/sdl2net/linux-build"
 }
 
-universal=0
-architectures="$(uname -m)"
-if [ "${1}" = "universal" ]; then
-    shift
-    if [ "${architectures}" = "arm64" ]; then
-        # We can only build universal binaries on an arm64 host because we
-        # need homebrew functional under both architectures.
-        universal=1
-        architectures="arm64 x86_64"
+clean_top_level() {
+    if [ -e "$top/Makefile" ]; then
+        echo "Cleaning DOSBox-X objects"
+        make clean
     fi
+    rm -f "$active_config"
+}
+
+if [ "${clean_build}" -eq 1 ]; then
+    echo "Forcing clean macOS build"
+    clean_top_level
+    clean_dependency_builds
+    rm -f "$top/src/dosbox-x-arm64" "$top/src/dosbox-x-x86_64"
+elif [ "${universal}" -eq 0 ]; then
+    # A stale binary for the other architecture would make the app target
+    # accidentally lipo an unintended universal executable.
+    case "${architectures}" in
+        arm64)  rm -f "$top/src/dosbox-x-x86_64" ;;
+        x86_64) rm -f "$top/src/dosbox-x-arm64" ;;
+    esac
+else
+    # Universal mode must produce both architecture copies in this invocation.
+    rm -f "$top/src/dosbox-x-arm64" "$top/src/dosbox-x-x86_64"
 fi
+
+dependency_key() {
+    local name="$1"
+    {
+        printf 'name=%s\n' "$name"
+        printf 'arch=%s\n' "$arch"
+        printf 'sdk=%s\n' "$SDKROOT"
+        printf 'cc=%s\n' "${CC:-cc}"
+        printf 'cxx=%s\n' "${CXX:-c++}"
+        printf 'ar=%s\n' "${AR:-}"
+        printf 'ranlib=%s\n' "${RANLIB:-}"
+        printf 'cflags=%s\n' "$CFLAGS"
+        printf 'cppflags=%s\n' "$CPPFLAGS"
+        printf 'cxxflags=%s\n' "$CXXFLAGS"
+        printf 'ldflags=%s\n' "$LDFLAGS"
+    } | hash_stream
+}
+
+dependency_is_fresh() {
+    local prefix="$1"
+    local key="$2"
+    shift 2
+    local keyfile="$prefix/.dosbox-x-build-key"
+    local source
+
+    [ -f "$keyfile" ] || return 1
+    [ "$(cat "$keyfile")" = "$key" ] || return 1
+    [ -d "$prefix/include" ] || return 1
+    [ -d "$prefix/lib" ] || return 1
+    find "$prefix/lib" -type f -name '*.a' -size +0 -print -quit | grep -q . || return 1
+
+    for source in "$@"; do
+        if [ -d "$source" ]; then
+            if find "$source" \
+                \( -name linux-host -o -name linux-build -o -name .git \) -prune -o \
+                -type f -newer "$keyfile" -print -quit | grep -q .; then
+                return 1
+            fi
+        elif [ -e "$source" ] && [ "$source" -nt "$keyfile" ]; then
+            return 1
+        fi
+    done
+    return 0
+}
+
+mark_dependency() {
+    local prefix="$1"
+    local key="$2"
+    mkdir -p "$prefix"
+    printf '%s\n' "$key" > "$prefix/.dosbox-x-build-key"
+}
+
+package_config_digest() {
+    if [ -f "$top/vs/config_package.h" ]; then
+        shasum -a 256 "$top/vs/config_package.h" | awk '{print $1}'
+    else
+        printf 'missing\n'
+    fi
+}
 
 arm64_brew_cmd=""
 x86_64_brew_cmd=""
-# arm64 native Homebrew
 if [ -x /opt/homebrew/bin/brew ]; then
     arm64_brew_cmd="/opt/homebrew/bin/brew"
 fi
-
-# x86_64 Homebrew
 if [ -x /usr/local/bin/brew ]; then
-    # old homebrew
     x86_64_brew_cmd="/usr/local/bin/brew"
 elif [ -x /usr/local/Homebrew/bin/brew ]; then
-    # new homebrew
     x86_64_brew_cmd="/usr/local/Homebrew/bin/brew"
 fi
-
-# x86_64 on arm64 for universal builds if x86_64 Homebrew is installed
 if [ -n "${x86_64_brew_cmd}" ] && [ "${universal}" -eq 1 ]; then
     x86_64_brew_cmd="/usr/bin/arch -x86_64 ${x86_64_brew_cmd}"
 fi
@@ -85,8 +212,6 @@ for arch in ${architectures}; do
         ${!brew_cmd} list pkg-config &>/dev/null || ${!brew_cmd} install pkg-config
     fi
 
-    do_cleanup
-
     arch_flags="-arch ${arch} -mmacosx-version-min=10.13 "
     CFLAGS="${arch_flags}${orig_CFLAGS}"
     CXXFLAGS="${arch_flags}${orig_CXXFLAGS}"
@@ -94,11 +219,9 @@ for arch in ${architectures}; do
     CPPFLAGS="${orig_CPPFLAGS}"
     LDFLAGS="${orig_LDFLAGS}"
     LIBS="${orig_LIBS}"
-    export CFLAGS CXXFLAGS OBJCXXFLAGS CPPFLAGS LDFLAGS LIBS
+    PKG_CONFIG_PATH="${orig_PKG_CONFIG_PATH}"
+    export CFLAGS CXXFLAGS OBJCXXFLAGS CPPFLAGS LDFLAGS LIBS PKG_CONFIG_PATH
 
-    # Validate the selected compiler against the same SDK and caller flags that
-    # all dependency sub-builds inherit. This catches stale -isysroot,
-    # --sysroot, -nostdinc, and related header-search overrides immediately.
     printf '#include <sys/types.h>\nstatic off_t dosbox_x_off;\nint main(void) { return dosbox_x_off != 0; }\n' |
         "${CC:-cc}" ${CPPFLAGS} ${CFLAGS} -x c -fsyntax-only - || {
             echo "macOS SDK/compiler probe failed for ${arch}: $SDKROOT/usr/include/sys/types.h" >&2
@@ -108,17 +231,30 @@ for arch in ${architectures}; do
         }
 
     if [ "${macos_backend}" = "sdl2" ]; then
-        # Explicit legacy fallback. Keep SDL isolated to this backend.
-        echo "Compiling the legacy in-tree SDL 2.x backend"
-        (cd vs/sdl2 && ./build-dosbox.sh) || exit 1
+        sdl_key="$(dependency_key sdl2)"
+        if dependency_is_fresh "$top/vs/sdl2/linux-host" "$sdl_key" \
+            "$top/vs/sdl2" "$top/vs/sdl2/build-dosbox.sh"; then
+            echo "Reusing cached SDL 2.x for ${arch}"
+        else
+            echo "Compiling the legacy in-tree SDL 2.x backend"
+            (cd vs/sdl2 && ./build-dosbox.sh) || exit 1
+            mark_dependency "$top/vs/sdl2/linux-host" "$sdl_key"
+        fi
         new="-I${top}/vs/sdl2/linux-host/include "
         nld="-L${top}/vs/sdl2/linux-host/lib "
         CPPFLAGS="${CPPFLAGS} ${new}"
         LDFLAGS="${LDFLAGS} ${nld}"
 
-        echo "Compiling the legacy in-tree SDL2_net backend"
-        chmod +x vs/sdl2net/*.sh
-        (cd vs/sdl2net && ./build-dosbox.sh) || exit 1
+        sdlnet_key="$(dependency_key sdl2net)"
+        if dependency_is_fresh "$top/vs/sdl2net/linux-host" "$sdlnet_key" \
+            "$top/vs/sdl2net" "$top/vs/sdl2net/build-dosbox.sh"; then
+            echo "Reusing cached SDL2_net for ${arch}"
+        else
+            echo "Compiling the legacy in-tree SDL2_net backend"
+            chmod +x vs/sdl2net/*.sh
+            (cd vs/sdl2net && ./build-dosbox.sh) || exit 1
+            mark_dependency "$top/vs/sdl2net/linux-host" "$sdlnet_key"
+        fi
         new="-I${top}/vs/sdl2net/linux-host/include "
         nld="-L${top}/vs/sdl2net/linux-host/lib "
         LDFLAGS="${LDFLAGS} ${nld}"
@@ -127,26 +263,44 @@ for arch in ${architectures}; do
         echo "Using native AppKit/Core Audio/IOKit host backend (no SDL runtime)"
     fi
     export LDFLAGS CPPFLAGS LIBS
-    
-    # build the pinned WHP zlib source
-    echo "Compiling pinned WHP zlib fork"
-    sh ./build-scripts/zlib/build-dosbox.sh || exit 1
+
+    zlib_key="$(dependency_key zlib)"
+    if dependency_is_fresh "$top/.build/zlib-host" "$zlib_key" \
+        "$top/vs/zlib" "$top/build-scripts/zlib/build-dosbox.sh"; then
+        echo "Reusing cached pinned WHP zlib for ${arch}"
+    else
+        echo "Compiling pinned WHP zlib fork"
+        sh ./build-scripts/zlib/build-dosbox.sh || exit 1
+        mark_dependency "$top/.build/zlib-host" "$zlib_key"
+    fi
     new="-I${top}/.build/zlib-host/include "
     nld="-L${top}/.build/zlib-host/lib "
     LDFLAGS="${LDFLAGS}${nld}"
     CPPFLAGS="${CPPFLAGS}${new}"
 
-    # prefer to compile against our own libpng (comment this out to disable)
-    echo "Compiling our internal libpng"
-    (cd vs/libpng && ./build-dosbox.sh) || exit 1
+    libpng_key="$(dependency_key libpng)"
+    if dependency_is_fresh "$top/vs/libpng/linux-host" "$libpng_key" \
+        "$top/vs/libpng" "$top/vs/libpng/build-dosbox.sh"; then
+        echo "Reusing cached libpng for ${arch}"
+    else
+        echo "Compiling our internal libpng"
+        (cd vs/libpng && ./build-dosbox.sh) || exit 1
+        mark_dependency "$top/vs/libpng/linux-host" "$libpng_key"
+    fi
     new="-I${top}/vs/libpng/linux-host/include "
     nld="-L${top}/vs/libpng/linux-host/lib "
     LDFLAGS="${LDFLAGS}${nld}"
     CPPFLAGS="${CPPFLAGS}${new}"
 
-    # prefer to compile against our own freetype
-    echo "Compiling our internal freetype"
-    (cd vs/freetype && ./build-dosbox.sh) || exit 1
+    freetype_key="$(dependency_key freetype)"
+    if dependency_is_fresh "$top/vs/freetype/linux-host" "$freetype_key" \
+        "$top/vs/freetype" "$top/vs/freetype/build-dosbox.sh"; then
+        echo "Reusing cached FreeType for ${arch}"
+    else
+        echo "Compiling our internal freetype"
+        (cd vs/freetype && ./build-dosbox.sh) || exit 1
+        mark_dependency "$top/vs/freetype/linux-host" "$freetype_key"
+    fi
     new="-I${top}/vs/freetype/linux-host/include/freetype2 "
     nld="-L${top}/vs/freetype/linux-host/lib/ -lfreetype "
     LDFLAGS="${LDFLAGS}${nld}"
@@ -154,36 +308,78 @@ for arch in ${architectures}; do
     INTERNAL_FREETYPE=1
     export CFLAGS LDFLAGS CPPFLAGS CXXFLAGS OBJCXXFLAGS INTERNAL_FREETYPE
 
-    opts=
-
-    # if Brew has installed packages, try to use those too
     if [ -n "${!brew_cmd}" ]; then
         echo "Brew is installed, I'm going to use its libraries too"
         new="-I$(${!brew_cmd} --prefix)/include "
         nld="-L$(${!brew_cmd} --prefix)/lib "
         LDFLAGS="${LDFLAGS}${nld}"
         CPPFLAGS="${CPPFLAGS}${new}"
-        PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(${!brew_cmd} --prefix)/lib/pkgconfig"
+        if [ -n "${PKG_CONFIG_PATH}" ]; then
+            PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(${!brew_cmd} --prefix)/lib/pkgconfig"
+        else
+            PKG_CONFIG_PATH="$(${!brew_cmd} --prefix)/lib/pkgconfig"
+        fi
         export CFLAGS LDFLAGS CPPFLAGS CXXFLAGS OBJCXXFLAGS PKG_CONFIG_PATH
     fi
 
-    if [ "${universal}" = 1 ]; then
-        opts="${opts} --enable-universal"
-    fi
-
-    # now compile ourself
-    echo "Compiling DOSBox-X"
-    chmod +x configure
-
+    configure_options=(--enable-debug=heavy --prefix=/usr)
     if [ "${macos_backend}" = "native" ]; then
-        ./configure --enable-debug=heavy --prefix=/usr \
-            --enable-native-macos --disable-sdl2 --disable-sdlnet --disable-opengl \
-            "${opts}" "${@}" || exit 1
+        configure_options+=(--enable-native-macos --disable-sdl2 --disable-sdlnet --disable-opengl)
     else
-        ./configure --enable-debug=heavy --prefix=/usr --enable-sdl2 \
-            "${opts}" "${@}" || exit 1
+        configure_options+=(--enable-sdl2)
     fi
-    make -j$(sysctl -n hw.ncpu) || exit 1
+    if [ "${universal}" -eq 1 ]; then
+        configure_options+=(--enable-universal)
+    fi
+    configure_options+=("${configure_args[@]}")
+
+    config_key="$({
+        printf 'top=%s\n' "$top"
+        printf 'backend=%s\n' "$macos_backend"
+        printf 'arch=%s\n' "$arch"
+        printf 'universal=%s\n' "$universal"
+        printf 'sdk=%s\n' "$SDKROOT"
+        printf 'cc=%s\n' "${CC:-cc}"
+        printf 'cxx=%s\n' "${CXX:-c++}"
+        printf 'cflags=%s\n' "$CFLAGS"
+        printf 'cppflags=%s\n' "$CPPFLAGS"
+        printf 'cxxflags=%s\n' "$CXXFLAGS"
+        printf 'objcxxflags=%s\n' "$OBJCXXFLAGS"
+        printf 'ldflags=%s\n' "$LDFLAGS"
+        printf 'libs=%s\n' "$LIBS"
+        printf 'pkg_config_path=%s\n' "$PKG_CONFIG_PATH"
+        printf 'config_package=%s\n' "$(package_config_digest)"
+        for option in "${configure_options[@]}"; do
+            printf 'configure=%q\n' "$option"
+        done
+    } | hash_stream)"
+
+    previous_key="$(cat "$active_config" 2>/dev/null || true)"
+    config_changed=0
+    if [ ! -e "$top/Makefile" ] || [ ! -x "$top/config.status" ] || [ ! -f "$top/config.h" ] ||
+       [ "$previous_key" != "$config_key" ]; then
+        config_changed=1
+    fi
+
+    if [ -e "$top/Makefile" ] &&
+       { [ "$config_changed" -eq 1 ] || [ "$autogen_ran" -eq 1 ]; }; then
+        echo "macOS build configuration changed; discarding incompatible DOSBox-X objects"
+        make clean
+    fi
+
+    if [ "$config_changed" -eq 1 ] ||
+       [ "$autogen_ran" -eq 1 ] ||
+       [ "$force_reconfigure" -eq 1 ]; then
+        echo "Configuring DOSBox-X for ${macos_backend}/${arch}"
+        chmod +x configure
+        ./configure "${configure_options[@]}" || exit 1
+        printf '%s\n' "$config_key" > "$active_config"
+    else
+        echo "Reusing DOSBox-X configure state for ${macos_backend}/${arch}"
+    fi
+
+    echo "Incrementally compiling DOSBox-X for ${arch}"
+    make -j"$(sysctl -n hw.ncpu)" || exit 1
 
     if [ "${macos_backend}" = "native" ]; then
         if otool -L src/dosbox-x | grep -Eiq 'SDL(2|2_net|_net)?'; then
