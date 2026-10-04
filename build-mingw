@@ -46,10 +46,10 @@ export LDFLAGS CPPFLAGS
 # NTS: MinGW provides zlib for us
 if false; then
 	# prefer to compile against our own zlib
-	echo "Compiling our internal zlib"
-	(cd vs/zlib && ./build-dosbox.sh) || exit 1
-	new="-I${top}/vs/zlib/linux-host/include "
-	nld="-L${top}/vs/zlib/linux-host/lib "
+	echo "Compiling pinned WHP zlib fork"
+	./build-scripts/zlib/build-dosbox.sh || exit 1
+	new="-I${top}/.build/zlib-host/include "
+	nld="-L${top}/.build/zlib-host/lib "
 	LDFLAGS="${nld}${LDFLAGS}"
 	CPPFLAGS="${new}${CPPFLAGS}"
 	export LDFLAGS CPPFLAGS
