@@ -1,0 +1,26 @@
+name: Autoconf policy
+
+on:
+  push:
+    paths:
+      - 'configure.ac'
+      - 'autogen.sh'
+      - 'tests/verify_autoconf_policy.py'
+      - '.github/workflows/autotools-policy.yml'
+  pull_request:
+    paths:
+      - 'configure.ac'
+      - 'autogen.sh'
+      - 'tests/verify_autoconf_policy.py'
+      - '.github/workflows/autotools-policy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Verify configure.ac modernization guard
+        run: python3 tests/verify_autoconf_policy.py
