@@ -42,3 +42,40 @@ jobs:
           test -s .build/zlib-host/include/zlib.h
           test -s .build/zlib-host/include/zconf.h
           ar t .build/zlib-host/lib/libz.a >/dev/null
+      - name: Compile staged zlib headers across ABI modes
+        run: |
+          cat > .build/zlib-header-smoke.c <<'EOF'
+          #include <zlib.h>
+
+          static z_off_t smoke_off;
+          static z_size_t smoke_size;
+          #ifdef Z_LARGE64
+          static z_off64_t smoke_off64;
+          #endif
+
+          int main(void)
+          {
+              z_off_t total = smoke_off + (z_off_t)smoke_size;
+          #ifdef Z_LARGE64
+              total += (z_off_t)smoke_off64;
+          #endif
+              return total != 0;
+          }
+          EOF
+
+          for mode in default file64 large64; do
+            case "$mode" in
+              default) defs="" ;;
+              file64) defs="-D_FILE_OFFSET_BITS=64" ;;
+              large64) defs="-D_LARGEFILE64_SOURCE=1" ;;
+            esac
+
+            cc -std=c11 -Wall -Wextra -Werror $defs \
+              -I.build/zlib-host/include -fsyntax-only .build/zlib-header-smoke.c
+            c++ -std=c++14 -Wall -Wextra -Werror $defs \
+              -I.build/zlib-host/include -x c++ -fsyntax-only .build/zlib-header-smoke.c
+            clang -std=c11 -Wall -Wextra -Werror $defs \
+              -I.build/zlib-host/include -fsyntax-only .build/zlib-header-smoke.c
+            clang++ -std=c++14 -Wall -Wextra -Werror $defs \
+              -I.build/zlib-host/include -x c++ -fsyntax-only .build/zlib-header-smoke.c
+          done

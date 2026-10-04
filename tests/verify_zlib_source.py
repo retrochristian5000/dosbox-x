@@ -83,6 +83,10 @@ for needle in (
     "sh build-scripts/zlib/build-dosbox.sh",
     "test -s .build/zlib-host/lib/libz.a",
     "test -s .build/zlib-host/include/zconf.h",
+    "Compile staged zlib headers across ABI modes",
+    "-D_FILE_OFFSET_BITS=64",
+    "-D_LARGEFILE64_SOURCE=1",
+    "clang++ -std=c++14",
 ):
     if needle not in workflow:
         raise AssertionError(f"dependency CI is not exercising zlib build wiring: {needle!r}")
