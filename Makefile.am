@@ -3,6 +3,80 @@
 EXTRA_DIST = autogen.sh
 SUBDIRS = src include
 
+dosboxdatadir = $(datadir)/dosbox-x
+drivezdir = $(dosboxdatadir)/drivez
+glshadersdir = $(dosboxdatadir)/glshaders
+languagesdir = $(dosboxdatadir)/languages
+iconscalabledir = $(datadir)/icons/hicolor/scalable/apps
+desktopdir = $(datadir)/applications
+metainfodir = $(datadir)/metainfo
+bashcompletiondir = $(datadir)/bash-completion/completions
+
+dist_glshaders_DATA = \
+	contrib/glshaders/ScanLine.glsl \
+	contrib/glshaders/advinterp2x.glsl \
+	contrib/glshaders/advinterp3x.glsl \
+	contrib/glshaders/advmame2x.glsl \
+	contrib/glshaders/advmame3x.glsl \
+	contrib/glshaders/crt-aperture.glsl \
+	contrib/glshaders/crt-caligari.glsl \
+	contrib/glshaders/crt-easymode.glsl \
+	contrib/glshaders/crt-easymode.tweaked.glsl \
+	contrib/glshaders/crt-geom.glsl \
+	contrib/glshaders/crt-geom.tweaked.glsl \
+	contrib/glshaders/crt-hyllian.glsl \
+	contrib/glshaders/crt-lottes-fast.glsl \
+	contrib/glshaders/crt-lottes-fast.subtle+gain.glsl \
+	contrib/glshaders/crt-lottes.glsl \
+	contrib/glshaders/crt-lottes.tweaked.glsl \
+	contrib/glshaders/crt-nes-mini.glsl \
+	contrib/glshaders/crt-pi.glsl \
+	contrib/glshaders/default.glsl \
+	contrib/glshaders/fakelottes.glsl \
+	contrib/glshaders/fakelottes.tweaked.glsl \
+	contrib/glshaders/none.glsl \
+	contrib/glshaders/pixel_perfect-scanlines.glsl \
+	contrib/glshaders/pixel_perfect.glsl \
+	contrib/glshaders/pixellate.glsl \
+	contrib/glshaders/rgb2x.glsl \
+	contrib/glshaders/rgb3x.glsl \
+	contrib/glshaders/scan2x.glsl \
+	contrib/glshaders/scan3x.glsl \
+	contrib/glshaders/sharp.glsl \
+	contrib/glshaders/tv2x.glsl \
+	contrib/glshaders/tv3x.glsl \
+	contrib/glshaders/xbr-lv2-3d.glsl \
+	contrib/glshaders/xbr-lv2-noblend.glsl \
+	contrib/glshaders/xbr-lv2.glsl \
+	contrib/glshaders/xbr-lv3.glsl \
+	contrib/glshaders/yee64.glsl \
+	contrib/glshaders/yeetron.glsl \
+	contrib/glshaders/zfast_crt.glsl
+
+dist_languages_DATA = \
+	contrib/translations/ca/ca_ES.lng \
+	contrib/translations/de/de_DE.lng \
+	contrib/translations/de/de_pc98.lng \
+	contrib/translations/en/en_US.lng \
+	contrib/translations/es/es_ES.lng \
+	contrib/translations/fr/fr_FR.lng \
+	contrib/translations/hu/hu_HU.lng \
+	contrib/translations/it/it_IT.lng \
+	contrib/translations/ja/ja_JP.lng \
+	contrib/translations/ko/ko_KR.lng \
+	contrib/translations/nl/nl_NL.lng \
+	contrib/translations/pt/pt_BR.lng \
+	contrib/translations/ru/ru_RU.lng \
+	contrib/translations/tr/tr_TR.lng \
+	contrib/translations/zh/zh_CN.lng \
+	contrib/translations/zh/zh_TW.lng
+
+dist_iconscalable_DATA = contrib/icons/dosbox-x.svg
+dist_desktop_DATA = contrib/linux/com.dosbox_x.DOSBox-X.desktop
+dist_metainfo_DATA = contrib/linux/com.dosbox_x.DOSBox-X.metainfo.xml
+dist_bashcompletion_DATA = contrib/linux/dosbox-x
+dist_man_MANS = contrib/linux/dosbox-x.1
+
 if MACOSX
 if MACOS_UNIVERSAL
 MACOS_BINARIES=src/dosbox-x-arm64 src/dosbox-x-x86_64
@@ -139,53 +213,13 @@ compat-site-update:
 	(cd ../dosbox-x-gh-pages && git add msdos-compat.html)
 	(cd ../dosbox-x-gh-pages && git commit -m 'more' msdos-compat.html demoscene-compat.html)
 
-install: src/dosbox-x
-	mkdir -p $(DESTDIR)$(bindir)
-	install -m 755 src/dosbox-x $(DESTDIR)$(bindir)
-	mkdir -p $(DESTDIR)$(prefix)/share/dosbox-x/drivez
-	mkdir -p $(DESTDIR)$(prefix)/share/dosbox-x/glshaders
-	mkdir -p $(DESTDIR)$(prefix)/share/dosbox-x/languages
-	install -m 644 $(srcdir)/CHANGELOG $(DESTDIR)$(prefix)/share/dosbox-x
-	install -m 644 $(srcdir)/contrib/fonts/FREECG98.BMP $(DESTDIR)$(prefix)/share/dosbox-x
-	install -m 644 $(srcdir)/dosbox-x.reference.conf $(DESTDIR)$(prefix)/share/dosbox-x
-	install -m 644 $(srcdir)/dosbox-x.reference.full.conf $(DESTDIR)$(prefix)/share/dosbox-x
-	install -m 644 $(srcdir)/contrib/fonts/wqy_1?pt.bdf $(DESTDIR)$(prefix)/share/dosbox-x
-	install -m 644 $(srcdir)/contrib/fonts/Nouveau_IBM.ttf $(DESTDIR)$(prefix)/share/dosbox-x
-	install -m 644 $(srcdir)/contrib/fonts/SarasaGothicFixed.ttf $(DESTDIR)$(prefix)/share/dosbox-x
-	install -m 644 $(srcdir)/contrib/windows/installer/drivez_readme.txt $(DESTDIR)$(prefix)/share/dosbox-x/drivez/readme.txt
-	install -m 644 $(srcdir)/contrib/glshaders/*.glsl $(DESTDIR)$(prefix)/share/dosbox-x/glshaders
-	install -m 644 $(srcdir)/contrib/translations/*/*.lng $(DESTDIR)$(prefix)/share/dosbox-x/languages
-	mkdir -p $(DESTDIR)$(prefix)/share/icons/hicolor/scalable/apps
-	install -m 644 $(srcdir)/contrib/icons/dosbox-x.svg $(DESTDIR)$(prefix)/share/icons/hicolor/scalable/apps/dosbox-x.svg
-	mkdir -p $(DESTDIR)$(prefix)/share/applications
-	install -m 644 $(srcdir)/contrib/linux/com.dosbox_x.DOSBox-X.desktop $(DESTDIR)$(prefix)/share/applications
-	mkdir -p $(DESTDIR)$(prefix)/share/metainfo
-	install -m 644 $(srcdir)/contrib/linux/com.dosbox_x.DOSBox-X.metainfo.xml $(DESTDIR)$(prefix)/share/metainfo
-	mkdir -p $(DESTDIR)$(mandir)/man1
-	install -m 644 $(srcdir)/contrib/linux/dosbox-x.1 $(DESTDIR)$(mandir)/man1
-	mkdir -p $(DESTDIR)$(prefix)/share/bash-completion/completions
-	install -m 644 $(srcdir)/contrib/linux/dosbox-x $(DESTDIR)$(prefix)/share/bash-completion/completions
-	-command -v setcap >/dev/null && setcap cap_net_raw=ep $(DESTDIR)$(bindir)/dosbox-x
+install-data-hook:
+	$(MKDIR_P) "$(DESTDIR)$(drivezdir)"
+	$(INSTALL_DATA) "$(srcdir)/contrib/windows/installer/drivez_readme.txt" "$(DESTDIR)$(drivezdir)/readme.txt"
 
-install_strip: src/dosbox-x install
-	install -m 755 -s src/dosbox-x $(DESTDIR)$(bindir)
-	-command -v setcap >/dev/null && setcap cap_net_raw=ep $(DESTDIR)$(bindir)/dosbox-x
+install-exec-hook:
+	-command -v setcap >/dev/null 2>&1 && setcap cap_net_raw=ep "$(DESTDIR)$(bindir)/dosbox-x"
 
-uninstall:
-	rm -f $(DESTDIR)$(bindir)/dosbox-x
-	rm -f $(DESTDIR)$(prefix)/share/dosbox-x/drivez/*
-	rmdir $(DESTDIR)$(prefix)/share/dosbox-x/drivez
-	rm -f $(DESTDIR)$(prefix)/share/dosbox-x/glshaders/*
-	rmdir $(DESTDIR)$(prefix)/share/dosbox-x/glshaders
-	rm -f $(DESTDIR)$(prefix)/share/dosbox-x/languages/*
-	rmdir $(DESTDIR)$(prefix)/share/dosbox-x/languages
-	rm -f $(DESTDIR)$(prefix)/share/dosbox-x/*
-	rmdir $(DESTDIR)$(prefix)/share/dosbox-x
-	rm -f $(DESTDIR)$(prefix)/share/icons/hicolor/48x48/apps/dosbox-x.png
-	rm -f $(DESTDIR)$(prefix)/share/icons/hicolor/scalable/apps/dosbox-x.svg
-	rm -f $(DESTDIR)$(prefix)/share/applications/dosbox-x.desktop
-	rm -f $(DESTDIR)$(prefix)/share/applications/com.dosbox_x.DOSBox-X.desktop
-	rm -f $(DESTDIR)$(prefix)/share/metainfo/dosbox-x.metainfo.xml
-	rm -f $(DESTDIR)$(prefix)/share/metainfo/com.dosbox_x.DOSBox-X.metainfo.xml
-	rm -f $(DESTDIR)$(mandir)/man1/dosbox-x.1
-	rm -f $(DESTDIR)$(prefix)/share/bash-completion/completions/dosbox-x
+uninstall-hook:
+	rm -f "$(DESTDIR)$(drivezdir)/readme.txt"
+	-rmdir "$(DESTDIR)$(drivezdir)" "$(DESTDIR)$(glshadersdir)" "$(DESTDIR)$(languagesdir)" "$(DESTDIR)$(dosboxdatadir)"

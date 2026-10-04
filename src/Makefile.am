@@ -9,7 +9,7 @@ SUBDIRS = cpu debug dos fpu gui hardware libs ints misc shell builtin aviwriter 
 
 bin_PROGRAMS = dosbox-x
 
-resdir = $(datarootdir)/dosbox-x
+resdir = $(datadir)/dosbox-x
 
 res_DATA = \
 	../dosbox-x.reference.conf \

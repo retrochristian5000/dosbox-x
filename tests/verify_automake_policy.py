@@ -101,4 +101,15 @@ if "\tg++ " in TOP_MAKEFILE:
 if "{msdos,demoscene}-compat.html" in TOP_MAKEFILE:
     fail("top-level recipe still relies on shell brace expansion")
 
+if "$(prefix)/share/" in TOP_MAKEFILE:
+    fail("top-level install rules must honor Automake datadir instead of hard-coding prefix/share")
+
+for target in ("install", "uninstall", "install_strip", "install-strip"):
+    if re.search(rf"(?m)^{re.escape(target)}\\s*:", TOP_MAKEFILE):
+        fail(f"top-level Makefile.am overrides Automake standard target: {target}")
+
+for hook in ("install-data-hook:", "install-exec-hook:", "uninstall-hook:"):
+    if hook not in TOP_MAKEFILE:
+        fail(f"top-level Makefile.am is missing Automake extension hook: {hook}")
+
 print("Automake policy: ok")
