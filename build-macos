@@ -116,7 +116,7 @@ for arch in ${architectures}; do
     
     # build the pinned WHP zlib source
     echo "Compiling pinned WHP zlib fork"
-    ./build-scripts/zlib/build-dosbox.sh || exit 1
+    sh ./build-scripts/zlib/build-dosbox.sh || exit 1
     new="-I${top}/.build/zlib-host/include "
     nld="-L${top}/.build/zlib-host/lib "
     LDFLAGS="${LDFLAGS}${nld}"
