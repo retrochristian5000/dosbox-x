@@ -1,11 +1,14 @@
 #include "config.h"
 
+#if !(defined(C_NATIVE_MACOS) && C_NATIVE_MACOS)
 #include <SDL_syswm.h>
+#endif
 
 #include "sdlmain.h"
 #include "control.h"
 #include "dosbox.h"
 #include "logging.h"
+#include "macosx_host.h"
 #include "menudef.h"
 #include "render.h"
 #include "vga.h"
@@ -439,20 +442,29 @@ void metal_init(void)
         sdl.desktop.pixelFormat = SDL_GetWindowPixelFormat(sdl.window);
     }
 
-    SDL_SysWMinfo wmi;
+    NSView *view = nil;
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    /*
+     * The native host already owns the AppKit view. Avoid round-tripping
+     * through SDL_SysWMinfo just to recover an object we created ourselves.
+     */
+    view = (__bridge NSView *)macosx_native_content_view();
+#else
+    SDL_SysWMinfo wmi = {};
     SDL_VERSION(&wmi.version);
 
     if(!SDL_GetWindowWMInfo(sdl.window, &wmi) || wmi.subsystem != SDL_SYSWM_COCOA) {
-        LOG_MSG("METAL: Failed to get WM info");
+        LOG_MSG("METAL: Failed to get Cocoa WM info");
         OUTPUT_SURFACE_Select();
         return;
     }
 
-    NSWindow* nswin = wmi.info.cocoa.window;
-    NSView* view = [nswin contentView];
+    NSWindow *nswin = wmi.info.cocoa.window;
+    view = [nswin contentView];
+#endif
 
     if(!view) {
-        LOG_MSG("METAL: Failed to get NSView");
+        LOG_MSG("METAL: Failed to get native NSView");
         OUTPUT_SURFACE_Select();
         return;
     }
