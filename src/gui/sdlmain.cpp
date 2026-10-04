@@ -1770,6 +1770,16 @@ void SetDisplayNumber(int display) {
 #if defined(C_SDL2)
 static bool SDL2_resize_enable = false;
 
+static int GFX_GetActiveDisplayIndex()
+{
+    if (sdl.window) {
+        const int display = SDL_GetWindowDisplayIndex(sdl.window);
+        if (display >= 0)
+            return display;
+    }
+    return sdl.displayNumber ? sdl.displayNumber - 1 : 0;
+}
+
 SDL_Window* GFX_GetSDLWindow(void) {
     return sdl.window;
 }
@@ -2362,7 +2372,7 @@ Bitu GFX_SetSize(Bitu width, Bitu height, Bitu flags, double scalex, double scal
                 }
             }
             SDL_DisplayMode dm;
-            if (SDL_GetDesktopDisplayMode(sdl.displayNumber?sdl.displayNumber-1:0,&dm) == 0) {
+            if (SDL_GetDesktopDisplayMode(GFX_GetActiveDisplayIndex(),&dm) == 0) {
                 bx += (dm.w - sdl.draw.width - sdl.clip.x)/2;
                 by += (dm.h - sdl.draw.height - sdl.clip.y)/2;
             }
@@ -2997,7 +3007,7 @@ void GFX_SwitchFullScreen(void)
                     }
                 }
                 SDL_DisplayMode dm;
-                if (SDL_GetDesktopDisplayMode(sdl.displayNumber?sdl.displayNumber-1:0,&dm) == 0) {
+                if (SDL_GetDesktopDisplayMode(GFX_GetActiveDisplayIndex(),&dm) == 0) {
                     bx += (dm.w - sdl.draw.width - sdl.clip.x)/2;
                     by += (dm.h - sdl.draw.height - sdl.clip.y)/2;
                 }
@@ -3842,7 +3852,7 @@ static void GUI_StartUp() {
 #if defined(C_SDL2)
     {
         SDL_DisplayMode dm;
-        if (SDL_GetDesktopDisplayMode(0/*FIXME display index*/,&dm) == 0) {
+        if (SDL_GetDesktopDisplayMode(GFX_GetActiveDisplayIndex(),&dm) == 0) {
             if (sdl.desktop.full.width == 0) {
                 sdl.desktop.full.width_auto = true;
                 sdl.desktop.full.width = dm.w;
@@ -4585,7 +4595,7 @@ void GFX_HandleVideoResize(int width, int height) {
     }
     else {
         SDL_DisplayMode dm;
-        if (SDL_GetDesktopDisplayMode(0/*FIXME display index*/,&dm) == 0) {
+        if (SDL_GetDesktopDisplayMode(GFX_GetActiveDisplayIndex(),&dm) == 0) {
             sdl.desktop.full.width = dm.w;
             sdl.desktop.full.height = dm.h;
             LOG_MSG("SDL2 reports desktop display mode %u x %u",dm.w,dm.h);
@@ -8128,7 +8138,7 @@ void GetMaxWidthHeight(unsigned int *pmaxWidth, unsigned int *pmaxHeight) {
 
 #if defined(C_SDL2)
     SDL_DisplayMode dm;
-    if (SDL_GetDesktopDisplayMode(sdl.displayNumber?sdl.displayNumber-1:0,&dm) == 0) {
+    if (SDL_GetDesktopDisplayMode(GFX_GetActiveDisplayIndex(),&dm) == 0) {
         maxWidth = dm.w;
         maxHeight = dm.h;
     }
