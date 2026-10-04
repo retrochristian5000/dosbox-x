@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-PIN = "da607da739fa6047df13e66a2af6b8bec7c2a498"
+PIN = "aeec65d178705a46d1d0d384f75c7decccb8b10b"
 
 gitmodules = (ROOT / ".gitmodules").read_text(encoding="utf-8")
 mac = (ROOT / "build-macos").read_text(encoding="utf-8")
@@ -72,8 +72,6 @@ for needle in ('..\\zlib\\adler32.c', '..\\zlib\\zlib.h'):
     if needle not in project:
         raise AssertionError(f"Visual Studio is not compiling pinned zlib source: {needle!r}")
 
-print("pinned zlib policy: ok")
-
 if '"$srcdir/configure" || exit 1' in wrapper:
     raise AssertionError("zlib wrapper must configure static-only")
 if "make -j || exit 1" in wrapper:
@@ -87,6 +85,11 @@ for needle in (
     "-D_FILE_OFFSET_BITS=64",
     "-D_LARGEFILE64_SOURCE=1",
     "clang++ -std=c++14",
+    "Build pinned zlib with strict Clang header checks",
+    "CFLAGS: -std=c11 -Wall -Wextra -Werror",
+    "AR: llvm-ar",
 ):
     if needle not in workflow:
         raise AssertionError(f"dependency CI is not exercising zlib build wiring: {needle!r}")
+
+print("pinned zlib policy: ok")
