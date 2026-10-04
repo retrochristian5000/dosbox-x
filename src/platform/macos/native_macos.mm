@@ -7,9 +7,19 @@
  * code are renamed to DOSBoxMac_* at compile time.  No SDL library is linked.
  */
 
-#define SDL_MAIN_HANDLED 1
-
-#include "SDL.h"
+/*
+ * Keep the native backend's SDL-shaped ABI dependency explicit and narrow.
+ * Do not include SDL.h here: that umbrella drags unrelated subsystems into
+ * AppKit/CoreAudio/IOKit host code.
+ */
+#include "SDL_audio.h"
+#include "SDL_events.h"
+#include "SDL_hints.h"
+#include "SDL_mutex.h"
+#include "SDL_render.h"
+#include "SDL_thread.h"
+#include "SDL_timer.h"
+#include "SDL_version.h"
 
 #import <AppKit/AppKit.h>
 #import <AudioUnit/AudioUnit.h>
