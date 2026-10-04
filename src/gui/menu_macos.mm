@@ -297,8 +297,14 @@ void macosx_reload_touchbar(void) {
 NSTouchBar* macosx_on_make_touch_bar(NSWindow *wnd) {
     (void)wnd;
 
+    // NSTouchBar.delegate is weak. Keep one stateless delegate alive for the
+    // process instead of depending on a leaked temporary allocation.
+    static DOSBoxXTouchBarDelegate *touchBarDelegate = nil;
+    if (!touchBarDelegate)
+        touchBarDelegate = [[DOSBoxXTouchBarDelegate alloc] init];
+
     NSTouchBar* touchBar = [[NSTouchBar alloc] init];
-    touchBar.delegate = [DOSBoxXTouchBarDelegate alloc];
+    touchBar.delegate = touchBarDelegate;
 
     touchBar.customizationIdentifier = TouchBarCustomIdentifier;
     if (GUI_IsRunning()) {

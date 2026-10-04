@@ -77,6 +77,10 @@ require(menu, 'error "menu_macos.mm uses manual reference counting', "menu MRC c
 require(menu, "CFRelease(source);", "IME copied input source release")
 require(menu, "CFRelease(sources);", "IME created input-source list release")
 require(menu, "return [item autorelease];", "Touch Bar delegate MRC return ownership")
+require(menu, "static DOSBoxXTouchBarDelegate *touchBarDelegate = nil;",
+        "Touch Bar weak delegate must have explicit process lifetime")
+if "touchBar.delegate = [DOSBoxXTouchBarDelegate alloc];" in menu:
+    raise AssertionError("Touch Bar weak delegate depends on a leaked allocation")
 require(menu, "[super touchesCancelledWithEvent:event];", "Touch Bar cancellation superclass dispatch")
 require(menu, "[alert release];", "manual NSAlert ownership cleanup")
 
