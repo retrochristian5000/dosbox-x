@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIGURE = (ROOT / "configure.ac").read_text(encoding="utf-8")
+ACINCLUDE = (ROOT / "acinclude.m4").read_text(encoding="utf-8")
 
 
 def require(needle, label):
@@ -54,5 +55,13 @@ for bad in (
 ):
     if bad in CONFIGURE:
         raise AssertionError("M4 macro callback is overquoted inside custom compiler flag probe")
+
+for obsolete in ("AC_TRY_COMPILE", "AC_LANG_SAVE", "AC_LANG_C", "AC_LANG_RESTORE"):
+    if obsolete in ACINCLUDE:
+        raise AssertionError(f"acinclude.m4 still uses obsolete Autoconf construct: {obsolete}")
+
+for required in ("AC_LANG_PUSH([C])", "AC_COMPILE_IFELSE(", "AC_LANG_POP([C])"):
+    if required not in ACINCLUDE:
+        raise AssertionError(f"modern ALSA compile probe is missing: {required}")
 
 print("Autoconf policy: ok")
