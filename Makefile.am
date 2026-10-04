@@ -85,9 +85,26 @@ MACOS_BINARIES=src/dosbox-x-$(MACOSX_CPU)
 endif
 endif
 
-.PHONY: dosbox-x.app
+.PHONY: dosbox-x.app dosbox-x.app-clean
 
-dosbox-x.app: $(MACOS_BINARIES) contrib/macos/dosbox.icns src/tool/mach-o-matic
+MACOS_APP_RESOURCES = \
+	contrib/macos/dosbox-x.plist \
+	contrib/macos/dosbox-x.pkginfo \
+	contrib/macos/dosbox.icns \
+	contrib/fonts/FREECG98.BMP \
+	contrib/fonts/wqy_11pt.bdf \
+	contrib/fonts/wqy_12pt.bdf \
+	contrib/fonts/Nouveau_IBM.ttf \
+	contrib/fonts/SarasaGothicFixed.ttf \
+	contrib/windows/installer/drivez_readme.txt \
+	$(dist_glshaders_DATA) \
+	$(dist_languages_DATA) \
+	dosbox-x.reference.conf \
+	dosbox-x.reference.full.conf
+
+dosbox-x.app: dosbox-x.app/.stamp
+
+dosbox-x.app/.stamp: $(MACOS_BINARIES) $(MACOS_APP_RESOURCES) src/tool/mach-o-matic appbundledeps.py
 	rm -Rfv dosbox-x.app
 	mkdir dosbox-x.app
 	mkdir dosbox-x.app/Contents
@@ -163,6 +180,10 @@ dosbox-x.app: $(MACOS_BINARIES) contrib/macos/dosbox.icns src/tool/mach-o-matic
 	fi
 # Re-sign the universal binary executable and all the libraries
 	codesign --deep -s - dosbox-x.app/Contents/MacOS/dosbox-x || exit 1
+	touch dosbox-x.app/.stamp
+
+dosbox-x.app-clean:
+	rm -Rfv dosbox-x.app
 
 debug-dosbox-x-app:
 	(cd dosbox-x.app/Contents/MacOS && (DYLD_PRINT_LIBRARIES=1 ./dosbox-x -defaultconf -defaultdir . -silent -c 'echo hello' -c 'exit')) 2>mac-os-x-dylib-report.txt
@@ -174,6 +195,7 @@ src/tool/mach-o-matic: src/tool/mach-o-matic.cpp
 
 clean-local:
 	rm -f src/tool/mach-o-matic
+	rm -Rfv dosbox-x.app
 
 contrib/macos/dosbox.icns: contrib/macos/dosbox-x.png
 	rm -Rfv src/dosbox.iconset
