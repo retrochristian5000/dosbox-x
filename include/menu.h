@@ -23,7 +23,9 @@
 #include <string>
 #include <vector>
 
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include <SDL_video.h>
+#endif
 
 #ifdef __WIN32__
 #include "programs.h"
