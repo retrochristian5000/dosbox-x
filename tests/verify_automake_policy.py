@@ -105,7 +105,7 @@ if "$(prefix)/share/" in TOP_MAKEFILE:
     fail("top-level install rules must honor Automake datadir instead of hard-coding prefix/share")
 
 for target in ("install", "uninstall", "install_strip", "install-strip"):
-    if re.search(rf"(?m)^{re.escape(target)}\\s*:", TOP_MAKEFILE):
+    if re.search(rf"(?m)^{re.escape(target)}\s*:", TOP_MAKEFILE):
         fail(f"top-level Makefile.am overrides Automake standard target: {target}")
 
 for hook in ("install-data-hook:", "install-exec-hook:", "uninstall-hook:"):
