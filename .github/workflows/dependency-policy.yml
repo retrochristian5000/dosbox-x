@@ -1,0 +1,34 @@
+name: Dependency policy
+
+on:
+  push:
+    paths:
+      - '.gitmodules'
+      - 'vs/zlib'
+      - 'vs/zlib-project/**'
+      - 'build-scripts/zlib/**'
+      - 'build-macos'
+      - 'build-mingw'
+      - 'tests/verify_zlib_source.py'
+      - '.github/workflows/dependency-policy.yml'
+  pull_request:
+    paths:
+      - '.gitmodules'
+      - 'vs/zlib'
+      - 'vs/zlib-project/**'
+      - 'build-scripts/zlib/**'
+      - 'build-macos'
+      - 'build-mingw'
+      - 'tests/verify_zlib_source.py'
+      - '.github/workflows/dependency-policy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  zlib-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify pinned zlib source boundary
+        run: python3 tests/verify_zlib_source.py
