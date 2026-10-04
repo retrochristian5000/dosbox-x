@@ -17,7 +17,9 @@
  */
 
 #include "config.h"
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL_endian.h"
+#endif
 #include "vga.h"
 
 #if DBPP == 8
