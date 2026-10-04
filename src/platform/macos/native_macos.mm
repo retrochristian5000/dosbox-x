@@ -208,12 +208,6 @@ CGFloat cocoa_desktop_top()
     return CGRectGetMaxY(mainBounds);
 }
 
-NSRect cocoa_content_rect_from_sdl(const CGFloat x, const CGFloat y,
-                                   const CGFloat w, const CGFloat h)
-{
-    return NSMakeRect(x, cocoa_desktop_top() - y - h, w, h);
-}
-
 NSRect sdl_content_rect_from_window(SDL_Window *window)
 {
     if (!window || !window->nswindow)
@@ -1108,9 +1102,9 @@ int SDLCALL mem_close(SDL_RWops *rw)
     push_event(resized);
 }
 
-- (void)windowDidFailToEnterFullScreen:(NSNotification *)notification
+- (void)windowDidFailToEnterFullScreen:(NSWindow *)window
 {
-    (void)notification;
+    (void)window;
     if (!self.owner)
         return;
     self.owner->fullscreen_transition = false;
@@ -1118,9 +1112,9 @@ int SDLCALL mem_close(SDL_RWops *rw)
     set_error("AppKit failed to enter fullscreen");
 }
 
-- (void)windowDidFailToExitFullScreen:(NSNotification *)notification
+- (void)windowDidFailToExitFullScreen:(NSWindow *)window
 {
-    (void)notification;
+    (void)window;
     if (!self.owner)
         return;
     self.owner->fullscreen_transition = false;
