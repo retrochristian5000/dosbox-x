@@ -732,6 +732,15 @@
     <ClCompile Include="..\src\misc\savestates.cpp">
       <Filter>Sources\misc</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\misc\minizip_zip.c">
+      <Filter>Sources\misc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\misc\minizip_unzip.c">
+      <Filter>Sources\misc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\misc\minizip_ioapi.c">
+      <Filter>Sources\misc</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\misc\setup.cpp">
       <Filter>Sources\misc</Filter>
     </ClCompile>

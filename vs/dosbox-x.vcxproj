@@ -1139,6 +1139,9 @@ for /d %%i in ("$(SolutionDir)\..\contrib\translations\*") do copy "%%i\*.lng" "
     <ClCompile Include="..\src\ints\qcow2_disk.cpp" />
     <ClCompile Include="..\src\misc\regionalloctracking.cpp" />
     <ClCompile Include="..\src\misc\savestates.cpp" />
+    <ClCompile Include="..\src\misc\minizip_zip.c" />
+    <ClCompile Include="..\src\misc\minizip_unzip.c" />
+    <ClCompile Include="..\src\misc\minizip_ioapi.c" />
     <ClCompile Include="..\src\misc\setup.cpp" />
     <ClCompile Include="..\src\misc\support.cpp" />
     <ClCompile Include="..\src\output\direct3d\direct3d.cpp" />
