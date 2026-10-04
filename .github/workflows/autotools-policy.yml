@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'configure.ac'
+      - 'acinclude.m4'
       - 'autogen.sh'
       - 'Makefile.am'
       - 'include/Makefile.am'
@@ -14,6 +15,7 @@ on:
   pull_request:
     paths:
       - 'configure.ac'
+      - 'acinclude.m4'
       - 'autogen.sh'
       - 'Makefile.am'
       - 'include/Makefile.am'
@@ -34,3 +36,5 @@ jobs:
         run: python3 tests/verify_autoconf_policy.py
       - name: Verify Automake graph and portability guard
         run: python3 tests/verify_automake_policy.py
+      - name: Regenerate Autotools files
+        run: ./autogen.sh
