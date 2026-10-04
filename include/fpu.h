@@ -45,7 +45,7 @@ uint16_t SaturateDwordSToWordU(int32_t value);
 
 void   setFPUTagEmpty();
 
-constexpr double X87_TRIG_ARG_LIMIT = 0x1p63; // 2^63
+constexpr double X87_TRIG_ARG_LIMIT = 9223372036854775808.0; // 2^63
 
 // TOP = macro for use in C/C++ for top of FPU stack
 // FPUSW = macro for the entire FPU status word for use in dynamic core

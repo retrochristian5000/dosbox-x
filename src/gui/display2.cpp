@@ -96,7 +96,7 @@ static void DISP2_Refresh(Bitu /*val*/) {
 		need_refresh=true;
 	}
 	if ((new_ch) && new_pos<2000 && (new_ch!=old_ch || new_pos!=old_pos)) {
-		DISP2_WriteChar(new_pos/80,new_pos%80,host_readw(&disp2.memory[new_pos<<1])&0xff00|new_ch);
+		DISP2_WriteChar(new_pos/80,new_pos%80,(host_readw(&disp2.memory[new_pos<<1]) & 0xff00) | new_ch);
 		need_refresh=true;
 	}
 	old_ch=new_ch;
@@ -116,10 +116,10 @@ public:
 		flags=PFLAG_NOCODE;
 	}
 	// the 4kB map area is repeated in the 32kB range
-	uint8_t readb(PhysPt addr) {
+	uint8_t readb(PhysPt addr) override {
 		return disp2.memory[addr&0xfff];
 	}
-	void writeb(PhysPt addr,uint8_t val) {
+	void writeb(PhysPt addr,uint8_t val) override {
 		disp2.memory[addr&0xfff]=val;
 		disp2.update=true;
 	}
