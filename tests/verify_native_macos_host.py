@@ -255,6 +255,28 @@ for framework_marker in (
 ):
     require(native, framework_marker, "native framework implementation")
 
+for native_display_marker in (
+    "initWithContentRect:rect",
+    "screen:screen",
+    "frameRectForContentRect:content",
+    "CGDisplayBounds(display_id)",
+    "CGDisplayModeGetWidth(cgmode)",
+    "DOSBoxMac_GetWindowDisplayIndex",
+    "windowDidChangeBackingProperties:",
+    "windowDidChangeScreen:",
+):
+    require(native, native_display_marker,
+            f"native AppKit/CoreGraphics display integration for {native_display_marker}")
+
+require(compat, "#define SDL_GetWindowDisplayIndex",
+        "native display-index ABI remap")
+require(metal, "convertRectToBacking:metalView.bounds",
+        "Metal drawable size must come from AppKit backing conversion")
+require(metal, "layer.framebufferOnly = YES;",
+        "Metal drawable should use framebuffer-only optimization")
+require(sdlmain_cpp, "SDL_WINDOWEVENT_DISPLAY_CHANGED",
+        "macOS display changes must refresh output geometry")
+
 for entry in (
     "DOSBoxMac_CreateWindow",
     "DOSBoxMac_OpenAudioDevice",
