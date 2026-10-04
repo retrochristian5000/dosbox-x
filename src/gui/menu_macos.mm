@@ -13,8 +13,6 @@
 # include <MacTypes.h>
 # include <Cocoa/Cocoa.h>
 # include <Carbon/Carbon.h>
-# include <Foundation/NSString.h>
-# include <Foundation/Foundation.h>
 # include <ApplicationServices/ApplicationServices.h>
 # include <IOKit/pwr_mgt/IOPMLib.h>
 
@@ -46,8 +44,7 @@ void SetAlpha(double alpha) {
 #else
 void sdl1_hax_set_topmost(unsigned char topmost) {
     SDL_Window* GFX_GetSDLWindow(void);
-    SDL_SysWMinfo wminfo;
-    memset(&wminfo,0,sizeof(wminfo));
+    SDL_SysWMinfo wminfo = {};
     SDL_VERSION(&wminfo.version);
     NSWindow *wnd = nil;
     if (SDL_GetWindowWMInfo(GFX_GetSDLWindow(),&wminfo) >= 0) {
@@ -70,8 +67,7 @@ void MacOSEnableWindowCapture(unsigned int enable) {
 
 # if defined(C_SDL2)
     SDL_Window* GFX_GetSDLWindow(void);
-    SDL_SysWMinfo wminfo;
-    memset(&wminfo,0,sizeof(wminfo));
+    SDL_SysWMinfo wminfo = {};
     SDL_VERSION(&wminfo.version);
     if (SDL_GetWindowWMInfo(GFX_GetSDLWindow(),&wminfo) >= 0) {
         if (wminfo.subsystem == SDL_SYSWM_COCOA && wminfo.info.cocoa.window != NULL) {
@@ -441,8 +437,7 @@ void macosx_GetWindowDPI(ScreenSizeInfo &info) {
 #else
     SDL_Window* GFX_GetSDLWindow(void);
 
-    SDL_SysWMinfo wminfo;
-    memset(&wminfo,0,sizeof(wminfo));
+    SDL_SysWMinfo wminfo = {};
     SDL_VERSION(&wminfo.version);
 
     if (SDL_GetWindowWMInfo(GFX_GetSDLWindow(),&wminfo) >= 0) {

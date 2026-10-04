@@ -1,8 +1,7 @@
 #pragma once
 
-#include <sys/types.h>
-#include <assert.h>
-#include <math.h>
+#include <cstdint>
+#include <vector>
 
 #include "control.h"
 #include "dosbox.h"

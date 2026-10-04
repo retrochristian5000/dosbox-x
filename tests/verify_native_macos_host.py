@@ -94,6 +94,12 @@ for arc_source, label in ((native, "native_macos.mm"), (metal, "output_metal.mm"
 
 if "using namespace std;" in metal_header:
     raise AssertionError("Objective-C++ Metal header leaks the std namespace")
+for unused_header in ("<sys/types.h>", "<assert.h>", "<math.h>"):
+    if unused_header in metal_header:
+        raise AssertionError(f"Metal Objective-C++ header carries unused system dependency: {unused_header}")
+for required_header in ("<cstdint>", "<vector>"):
+    if required_header not in metal_header:
+        raise AssertionError(f"Metal Objective-C++ header misses direct C++ dependency: {required_header}")
 
 for api in (
     "SDL_Init",
