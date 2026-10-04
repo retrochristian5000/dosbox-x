@@ -6,6 +6,7 @@ adds a second guard with otool(1) and nm(1) after linking.
 """
 
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -148,8 +149,14 @@ for source, label in (
     (messages_cpp, "messages.cpp"),
     (clipboard_cpp, "clipboard.cpp"),
 ):
-    if "CodePageGuestToHostUTF8(char *d" in source or "InitCodePage();" in source:
-        raise AssertionError(f"{label} still carries ad-hoc codepage forward declarations")
+    for pattern in (
+        r"(?m)^\\s*(?:extern\\s+)?bool\\s+InitCodePage\\s*\\([^)]*\\)\\s*;",
+        r"(?m)^\\s*(?:extern\\s+)?bool\\s+CodePageGuestToHostUTF8\\s*\\([^)]*\\)\\s*;",
+    ):
+        if re.search(pattern, source):
+            raise AssertionError(
+                f"{label} still carries ad-hoc codepage forward declaration: {pattern}"
+            )
 
 for declaration in (
     "bool macosx_detect_nstouchbar(void);",
