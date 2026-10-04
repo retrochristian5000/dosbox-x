@@ -34,7 +34,7 @@ rm -f src/dosbox-x-arm64 src/dosbox-x-x86_64
 
 do_cleanup() {
     rm -rf vs/sdl2/linux-host vs/sdl2/linux-build
-    rm -rf vs/zlib/linux-host vs/zlib/linux-build
+    rm -rf .build/zlib-host .build/zlib-build
     rm -rf vs/libpng/linux-host vs/libpng/linux-build
     rm -rf vs/freetype/linux-host vs/freetype/linux-build
     rm -rf vs/sdl2net/linux-host vs/sdl2net/linux-build
@@ -115,10 +115,10 @@ for arch in ${architectures}; do
     export LDFLAGS CPPFLAGS LIBS
     
     # prefer to compile against our own zlib
-    echo "Compiling our internal zlib"
-    (cd vs/zlib && ./build-dosbox.sh) || exit 1
-    new="-I${top}/vs/zlib/linux-host/include "
-    nld="-L${top}/vs/zlib/linux-host/lib "
+    echo "Compiling pinned WHP zlib fork"
+    ./build-scripts/zlib/build-dosbox.sh || exit 1
+    new="-I${top}/.build/zlib-host/include "
+    nld="-L${top}/.build/zlib-host/lib "
     LDFLAGS="${LDFLAGS}${nld}"
     CPPFLAGS="${CPPFLAGS}${new}"
 
