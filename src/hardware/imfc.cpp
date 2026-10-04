@@ -93,13 +93,15 @@ uint8_t IMFC_IRQ = 3;
 
 SDL_mutex* m_loggerMutex;
 
+void IMF_LOG(const std::string& message)
+{
+	LOG(LOG_MISC,LOG_DEBUG)("%s", message.c_str());
+}
+
 template <typename... Args>
-void IMF_LOG(std::string format, Args const&... args)
+void IMF_LOG(const std::string& format, Args const&... args)
 {
 	LOG(LOG_MISC,LOG_DEBUG)(format.c_str(), args...);
-	/*SDL_LockMutex(m_loggerMutex);
-	printf((format + "\n").c_str(), args...); // Causes "error: format not a string literal and no format arguments [-Werror=format-security]" on GCC 13.1.1
-	SDL_UnlockMutex(m_loggerMutex);*/
 }
 
 inline uint8_t leftRotate8(uint8_t n)

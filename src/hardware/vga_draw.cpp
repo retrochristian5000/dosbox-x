@@ -256,7 +256,9 @@ const char* const mode_texts[M_MAX] = {
 #else
 # pragma GCC diagnostic ignored "-Wparentheses"
 # pragma GCC diagnostic ignored "-Wsign-compare"
-# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+# if defined(__GNUC__) && !defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+# endif
 #endif
 
 //#undef C_DEBUG

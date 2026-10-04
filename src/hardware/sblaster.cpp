@@ -4812,7 +4812,7 @@ void POD_Save_Sblaster( std::ostream& stream )
 	const char pod_name[32] = "SBlaster";
 
 	if( stream.fail() ) return;
-	if( !test ) return;
+	if( !test[ci] ) return;
 	if( !sb[ci].chan ) return;
 
 
@@ -4855,7 +4855,7 @@ void POD_Load_Sblaster( std::istream& stream )
 	char pod_name[32] = {0};
 
 	if( stream.fail() ) return;
-	if( !test ) return;
+	if( !test[ci] ) return;
 	if( !sb[ci].chan ) return;
 
 
