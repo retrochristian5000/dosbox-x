@@ -1108,9 +1108,9 @@ int SDLCALL mem_close(SDL_RWops *rw)
     push_event(resized);
 }
 
-- (void)windowDidFailToEnterFullScreen:(NSWindow *)window
+- (void)windowDidFailToEnterFullScreen:(NSNotification *)notification
 {
-    (void)window;
+    (void)notification;
     if (!self.owner)
         return;
     self.owner->fullscreen_transition = false;
@@ -1118,9 +1118,9 @@ int SDLCALL mem_close(SDL_RWops *rw)
     set_error("AppKit failed to enter fullscreen");
 }
 
-- (void)windowDidFailToExitFullScreen:(NSWindow *)window
+- (void)windowDidFailToExitFullScreen:(NSNotification *)notification
 {
-    (void)window;
+    (void)notification;
     if (!self.owner)
         return;
     self.owner->fullscreen_transition = false;
