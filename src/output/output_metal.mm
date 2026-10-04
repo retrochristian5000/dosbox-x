@@ -16,6 +16,8 @@
 #include "output_surface.h"
 #include "output_tools.h"
 
+#include <algorithm>
+#include <cmath>
 #include <string>
 #include <vector>
 
