@@ -275,6 +275,10 @@ require(compat, "#define SDL_GetWindowDisplayIndex",
         "native display-index ABI remap")
 require(metal, "convertRectToBacking:metalView.bounds",
         "Metal drawable size must come from AppKit backing conversion")
+require(metal, "#include <algorithm>",
+        "Metal geometry must declare std::max dependency")
+require(metal, "#include <cmath>",
+        "Metal geometry must declare std::round dependency")
 require(metal, "layer.framebufferOnly = YES;",
         "Metal drawable should use framebuffer-only optimization")
 require(macosx_host_header, "void *macosx_native_content_view(void);",
