@@ -23,6 +23,8 @@ Options:
   -p, --profile NAME  Select a backend/profile
       --universal     Request a macOS universal build
       --no-universal  Disable a configured macOS universal build
+      --clean          Force a clean macOS rebuild
+      --reconfigure    Re-run macOS configure without discarding compatible objects
       --no-config     Ignore .dosbox-x-build.conf
       --show-config   Show the effective saved settings
       --llvm          Build with the pinned WHP LLVM toolchain
@@ -126,6 +128,8 @@ profile=auto
 profile_set=0
 macos_universal=0
 compiler=system
+clean_build=0
+force_reconfigure=0
 dry=0
 show_saved=0
 args=()
@@ -143,6 +147,8 @@ while [ "$#" -gt 0 ]; do
         -n|--dry-run) dry=1; shift ;;
         --universal) macos_universal=1; shift ;;
         --no-universal) macos_universal=0; shift ;;
+        --clean) clean_build=1; shift ;;
+        --reconfigure) force_reconfigure=1; shift ;;
         --no-config) shift ;;
         --show-config) show_saved=1; shift ;;
         --llvm) compiler=llvm; shift ;;
@@ -170,6 +176,13 @@ backend="$(map_profile "$profile")" || fail "unknown profile '$profile'"
 [ "$backend" = auto ] && { backend="$(auto_backend)" || exit $?; }
 [ -f "$root/$backend" ] || fail "backend '$backend' does not exist"
 
+if [ "$clean_build" -eq 1 ] || [ "$force_reconfigure" -eq 1 ]; then
+    case "$backend" in
+        build-macos|build-macos-sdl2) ;;
+        *) fail "--clean/--reconfigure are currently supported by the macOS backends" ;;
+    esac
+fi
+
 if [ "$macos_universal" -eq 1 ]; then
     case "$backend" in
         build-macos)
@@ -193,9 +206,18 @@ fi
 
 printf 'DOSBox-X build backend: %s\n' "$backend"
 printf 'DOSBox-X compiler: %s\n' "$compiler"
+[ "$clean_build" -eq 0 ] || printf 'DOSBox-X macOS clean rebuild: yes\n'
+[ "$force_reconfigure" -eq 0 ] || printf 'DOSBox-X macOS reconfigure: yes\n'
 if [ "$dry" -eq 1 ]; then
     printf 'Command:'; printf ' %q' "$backend" "${args[@]}"; printf '\n'
     exit 0
+fi
+
+if [ "$clean_build" -eq 1 ]; then
+    export DOSBOX_CLEAN_BUILD=1
+fi
+if [ "$force_reconfigure" -eq 1 ]; then
+    export DOSBOX_RECONFIGURE=1
 fi
 
 if [ "$compiler" = llvm ]; then
