@@ -1,5 +1,7 @@
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include <SDL_thread.h>
 #include <SDL_timer.h>
+#endif
 
 #include "logging.h"
 #include "mixer.h"
