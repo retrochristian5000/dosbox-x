@@ -655,7 +655,13 @@ bool CMetal::Resize(uint32_t window_w,
     frame_height = tex_h;
 
     if(sdl.window && !sdl.desktop.fullscreen) {
-        SDL_SetWindowSize(sdl.window, window_w, window_h);
+        int actual_w = 0;
+        int actual_h = 0;
+        SDL_GetWindowSize(sdl.window, &actual_w, &actual_h);
+        if (actual_w != static_cast<int>(window_w) ||
+            actual_h != static_cast<int>(window_h)) {
+            SDL_SetWindowSize(sdl.window, window_w, window_h);
+        }
     }
 
     /*
@@ -666,6 +672,12 @@ bool CMetal::Resize(uint32_t window_w,
     const NSRect logicalBounds = metalView.bounds;
     const NSRect backingBounds = [metalView convertRectToBacking:logicalBounds];
     const CGFloat scale = metalView.window ? metalView.window.backingScaleFactor : 1.0;
+    const CGFloat backing_scale_x = logicalBounds.size.width > 0.0
+                                        ? backingBounds.size.width / logicalBounds.size.width
+                                        : scale;
+    const CGFloat backing_scale_y = logicalBounds.size.height > 0.0
+                                        ? backingBounds.size.height / logicalBounds.size.height
+                                        : scale;
 
     width = static_cast<uint32_t>(std::max<CGFloat>(1.0, std::round(logicalBounds.size.width)));
     height = static_cast<uint32_t>(std::max<CGFloat>(1.0, std::round(logicalBounds.size.height)));
@@ -717,11 +729,11 @@ bool CMetal::Resize(uint32_t window_w,
         currentViewport = { 0.0, 0.0, (double)dw, (double)dh, 0.0, 1.0 };
     }
 
-    // Mouse coordinates use window points, while Metal's viewport uses pixels.
-    sdl.clip.x = (Sint16)(currentViewport.originX / scale);
-    sdl.clip.y = (Sint16)(currentViewport.originY / scale);
-    sdl.clip.w = (Uint16)(currentViewport.width / scale);
-    sdl.clip.h = (Uint16)(currentViewport.height / scale);
+    // Mouse coordinates use AppKit points, while Metal's viewport uses backing pixels.
+    sdl.clip.x = static_cast<Sint16>(currentViewport.originX / backing_scale_x);
+    sdl.clip.y = static_cast<Sint16>(currentViewport.originY / backing_scale_y);
+    sdl.clip.w = static_cast<Uint16>(currentViewport.width / backing_scale_x);
+    sdl.clip.h = static_cast<Uint16>(currentViewport.height / backing_scale_y);
 
     last_window_w = width;
     last_window_h = height;
