@@ -1,0 +1,24 @@
+name: Compiler flag policy
+
+on:
+  push:
+    paths:
+      - 'configure.ac'
+      - 'tests/verify_compiler_flag_policy.py'
+      - '.github/workflows/compiler-flag-policy.yml'
+  pull_request:
+    paths:
+      - 'configure.ac'
+      - 'tests/verify_compiler_flag_policy.py'
+      - '.github/workflows/compiler-flag-policy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  cxxflags-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify compiler and ABI flag boundaries
+        run: python3 tests/verify_compiler_flag_policy.py

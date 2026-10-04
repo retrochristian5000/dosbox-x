@@ -307,14 +307,14 @@ dnl Some stuff for the icon.
 case "$host" in
     *-*-cygwin* | *-*-mingw32*)
     if test x$enable_hx = xyes; then
-        CXXFLAGS="$CXXFLAGS -DHX_DOS"
+        CPPFLAGS="$CPPFLAGS -DHX_DOS"
         AC_DEFINE(C_HX_DOS,1,[Targeting HX DOS extender])
     fi
     ;;
 esac
 
 if test x$enable_force_menu_sdldraw = xyes; then
-    CXXFLAGS="$CXXFLAGS -DFORCE_SDLDRAW"
+    CPPFLAGS="$CPPFLAGS -DFORCE_SDLDRAW"
     AC_DEFINE(C_FORCE_MENU_SDLDRAW,1,[Force SDL drawn menus])
 fi
 
@@ -455,24 +455,17 @@ case "$host" in
        ;;
 esac
 
-if test x$enable_emscripten = xyes; then
-    CXXFLAGS="$CXXFLAGS"
-else
-    dnl Some default CPU flags
-    case "$host_cpu" in
-        x86_64 | amd64)
-        # SSE is part of the x86_64 ABI
-        CXXFLAGS="$CXXFLAGS -msse"
-        ;;
-    esac
-fi
+dnl Keep the generic compiler flags ISA-neutral. The selected compiler target
+dnl already defines the ABI baseline; CPU/ISA tuning belongs in an explicit
+dnl target build profile or in caller-supplied CFLAGS/CXXFLAGS.
 
 dnl Some needed libraries for OS2
 dnl perhaps join this with the other target depended checks. move them upwards
 AM_CONDITIONAL(OS2, test x$host = xi386-pc-os2-emx)
 if test x$host = xi386-pc-os2-emx ; then
-    CXXFLAGS="$CXXFLAGS -DOS2 -march=pentium4 -idirafter /@unixroot/usr/include/os2tk45"
-    CFLAGS="$CFLAGS -DOS2 -march=pentium4 -idirafter /@unixroot/usr/include/os2tk45"
+    dnl OS/2 preprocessor/include policy is shared by C and C++. Do not force a
+    dnl Pentium 4 code-generation baseline: the caller/toolchain selects the CPU.
+    CPPFLAGS="$CPPFLAGS -DOS2 -idirafter /@unixroot/usr/include/os2tk45"
     LDFLAGS="$LDFLAGS -Zomf -Zhigh-mem -lcx"
 fi
 
