@@ -244,18 +244,30 @@ CXXFLAGS="$CXXFLAGS -std=gnu++14";
 
 dnl Allow the SDL drawn menu to be enabled on Windows or macOS instead of their native menu system.
 AH_TEMPLATE(C_FORCE_MENU_SDLDRAW,[Define to 1 to force SDL-drawn menus])
-AC_ARG_ENABLE(force-menu-sdldraw,AS_HELP_STRING([--enable-force-menu-sdldraw],[Force SDL drawn menus]),enable_force_menu_sdldraw=yes)
+AC_ARG_ENABLE([force-menu-sdldraw],
+  [AS_HELP_STRING([--enable-force-menu-sdldraw],[Force SDL drawn menus])],
+  [enable_force_menu_sdldraw=$enableval],
+  [enable_force_menu_sdldraw=no])
 
 dnl This is how the build script can specify a HX DOS extender target
 AH_TEMPLATE(C_HX_DOS,[Define to 1 to target HX DOS])
-AC_ARG_ENABLE(hx-dos,AS_HELP_STRING([--enable-hx-dos],[Enable HX target]),enable_hx=yes)
+AC_ARG_ENABLE([hx-dos],
+  [AS_HELP_STRING([--enable-hx-dos],[Enable HX target])],
+  [enable_hx=$enableval],
+  [enable_hx=no])
 
 dnl This is how the build script can use libopencow for win9x unicode 
 # AH_TEMPLATE(C_OPENCOW,[Define to 1 to enable opencow])
-AC_ARG_ENABLE(opencow,AS_HELP_STRING([--enable-opencow],[Enable OpenCOW]),enable_opencow=yes)
+AC_ARG_ENABLE([opencow],
+  [AS_HELP_STRING([--enable-opencow],[Enable OpenCOW])],
+  [enable_opencow=$enableval],
+  [enable_opencow=no])
 
 dnl Disable SDLnet for win9x builds
-AC_ARG_ENABLE(sdlnet,AS_HELP_STRING([--disable-sdlnet],[Disable SDLNet]),disable_sdl_net=yes)
+AC_ARG_ENABLE([sdlnet],
+  [AS_HELP_STRING([--disable-sdlnet],[Disable SDLNet])],
+  [enable_sdlnet=$enableval],
+  [enable_sdlnet=yes])
 
 dnl Let me know if you're targeting Emscripten
 AH_TEMPLATE(C_EMSCRIPTEN,[Define to 1 to target Emscripten])
@@ -525,7 +537,7 @@ AC_ARG_ENABLE([sdl2],
 
 AC_ARG_ENABLE([sdl3],
   [AS_HELP_STRING([--enable-sdl3],[Build DOSBox-X using SDL3])],
-  [enable_sdl3=yes],
+  [enable_sdl3=$enableval],
   [enable_sdl3=no]
 )
 
@@ -1241,7 +1253,7 @@ AH_TEMPLATE(C_SDL2_NET,[Indicate whether SDL2_net is present])
 AH_TEMPLATE(C_MODEM,[Define to 1 to enable internal modem support, requires SDL2_net])
 AH_TEMPLATE(C_IPX,[Define to 1 to enable IPX over Internet networking, requires SDL2_net])
 
-if test x$disable_sdl_net = xyes ; then
+if test x$enable_sdlnet = xno ; then
   AC_MSG_WARN([SDL2_net is disabled in parameters])
 elif test "x$SDL_STRING" = "xSDL2" &&
      test x$have_sdl2_net_h = xyes &&
