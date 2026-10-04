@@ -10,21 +10,6 @@ AC_SUBST([COPYRIGHT_YEAR])
 
 dnl Utility function ============================
 
-# AC_CHECK_CPPFLAGS(ADDITIONAL-CPPFLAGS, ACTION-IF-FOUND, ACTION-IF-NOT-FOUND)
-#
-# checks whether the $(C) compiler accepts the ADDITIONAL-CPPFLAGS
-# if so, they are added to the CPPFLAGS
-AC_DEFUN([AC_CHECK_CPPFLAGS],
-[
-  AC_MSG_CHECKING([whether $CPP accepts "$1"])
-  temp_check_cppflags="${CPPFLAGS}"
-  CPPFLAGS="$1 ${CPPFLAGS}"
-  AC_PREPROC_IFELSE(
-        [AC_LANG_SOURCE([[int main(void){return 0;}]])],
-        [AC_MSG_RESULT([yes])],
-        [AC_MSG_RESULT([no]); CPPFLAGS="${temp_check_cppflags}"])
-])# AC_CHECK_CPPFLAGS
-
 dnl LIBRARY TEST: OpenGL support
 AC_CHECK_LIB(GL, main, have_gl_lib=yes, have_gl_lib=no , )
 AC_CHECK_LIB(opengl32, main, have_opengl32_lib=yes,have_opengl32_lib=no , )
@@ -36,50 +21,46 @@ AC_CHECK_HEADER(d3dx9math.h, have_d3dx9math_h=yes , have_d3dx9math_h=no , )
 
 dnl Utility function ============================
 
-# AC_CHECK_CFLAGS(ADDITIONAL-CFLAGS, ACTION-IF-FOUND, ACTION-IF-NOT-FOUND)
+# AC_CHECK_CFLAGS(ADDITIONAL-CFLAGS)
 #
-# checks whether the $(CC) (C compiler) accepts the ADDITIONAL-CFLAGS
-# if so, they are added to the CFLAGS
+# Check whether the C compiler accepts ADDITIONAL-CFLAGS. On success the flag
+# is appended to CFLAGS and ac_check_cflags_result is set to yes.
 AC_DEFUN([AC_CHECK_CFLAGS],
 [
   AC_MSG_CHECKING([whether $CC accepts "$1"])
-cat > conftest.c << EOF
-int main(void){
-  return 0;
-}
-EOF
-if $CC $CPPFLAGS $CFLAGS -Werror -c -o conftest.o conftest.c [$1] > /dev/null 2>&1
-then
-  AC_MSG_RESULT([yes])
-  CFLAGS="${CFLAGS} [$1]"
-  [$2]
-else
-  AC_MSG_RESULT([no])
-  [$3]
-fi
+  ac_check_cflags_save="$CFLAGS"
+  CFLAGS="$CFLAGS -Werror $1"
+  AC_LANG_PUSH([C])
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([], [])],
+    [AC_MSG_RESULT([yes])
+     CFLAGS="$ac_check_cflags_save $1"
+     ac_check_cflags_result=yes],
+    [AC_MSG_RESULT([no])
+     CFLAGS="$ac_check_cflags_save"
+     ac_check_cflags_result=no])
+  AC_LANG_POP([C])
 ])# AC_CHECK_CFLAGS
 
-# AC_CHECK_CXXFLAGS(ADDITIONAL-CXXFLAGS, ACTION-IF-FOUND, ACTION-IF-NOT-FOUND)
+# AC_CHECK_CXXFLAGS(ADDITIONAL-CXXFLAGS)
 #
-# checks whether the $(CXX) (c++) compiler accepts the ADDITIONAL-CXXFLAGS
-# if so, they are added to the CXXFLAGS
+# Check whether the C++ compiler accepts ADDITIONAL-CXXFLAGS. On success the
+# flag is appended to CXXFLAGS and ac_check_cxxflags_result is set to yes.
 AC_DEFUN([AC_CHECK_CXXFLAGS],
 [
   AC_MSG_CHECKING([whether $CXX accepts "$1"])
-cat > conftest.c++ << EOF
-int main(){
-  return 0;
-}
-EOF
-if $CXX $CPPFLAGS $CXXFLAGS -Werror -c -o conftest.o conftest.c++ [$1] > /dev/null 2>&1
-then
-  AC_MSG_RESULT([yes])
-  CXXFLAGS="${CXXFLAGS} [$1]"
-  [$2]
-else
-  AC_MSG_RESULT([no])
-  [$3]
-fi
+  ac_check_cxxflags_save="$CXXFLAGS"
+  CXXFLAGS="$CXXFLAGS -Werror $1"
+  AC_LANG_PUSH([C++])
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([], [])],
+    [AC_MSG_RESULT([yes])
+     CXXFLAGS="$ac_check_cxxflags_save $1"
+     ac_check_cxxflags_result=yes],
+    [AC_MSG_RESULT([no])
+     CXXFLAGS="$ac_check_cxxflags_save"
+     ac_check_cxxflags_result=no])
+  AC_LANG_POP([C++])
 ])# AC_CHECK_CXXFLAGS
 
 # AC_CHECK_C_CXXFLAGS(ADDITIONAL-FLAGS)
@@ -239,9 +220,8 @@ dnl to gnu11/gnu++14 after the user requested a newer standard.
 case " $CFLAGS " in
   *" -std="*) ;;
   *)
-    c11_supported=yes
-    AC_CHECK_CFLAGS([-std=gnu11], [], [c11_supported=no])
-    AS_IF([test "x$c11_supported" != xyes],
+    AC_CHECK_CFLAGS([-std=gnu11])
+    AS_IF([test "x$ac_check_cflags_result" != xyes],
       [AC_MSG_ERROR([Your C compiler must support C11 or better])])
     ;;
 esac
@@ -249,9 +229,8 @@ esac
 case " $CXXFLAGS " in
   *" -std="*) ;;
   *)
-    cxx14_supported=yes
-    AC_CHECK_CXXFLAGS([-std=gnu++14], [], [cxx14_supported=no])
-    AS_IF([test "x$cxx14_supported" != xyes],
+    AC_CHECK_CXXFLAGS([-std=gnu++14])
+    AS_IF([test "x$ac_check_cxxflags_result" != xyes],
       [AC_MSG_ERROR([Your C++ compiler must support C++14 or better])])
     ;;
 esac

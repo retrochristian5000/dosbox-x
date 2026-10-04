@@ -31,10 +31,8 @@ for needle, label in {
     forbid(needle, label)
 
 for needle, label in {
-    "c11_supported=yes": "C11 probe must keep M4 errors outside custom flag callbacks",
-    "AS_IF([test \"x$c11_supported\" != xyes]": "C11 failure must be handled by Autoconf",
-    "cxx14_supported=yes": "C++14 probe must keep M4 errors outside custom flag callbacks",
-    "AS_IF([test \"x$cxx14_supported\" != xyes]": "C++14 failure must be handled by Autoconf",
+    "AS_IF([test \"x$ac_check_cflags_result\" != xyes]": "C11 failure must use compiler-probe result",
+    "AS_IF([test \"x$ac_check_cxxflags_result\" != xyes]": "C++14 failure must use compiler-probe result",
     "AC_CONFIG_HEADERS([config.h])": "modern config header declaration",
     "[enable_force_menu_sdldraw=$enableval]": "force-menu option must respect --disable",
     "[enable_hx=$enableval]": "HX option must respect --disable",
@@ -63,5 +61,19 @@ for obsolete in ("AC_TRY_COMPILE", "AC_LANG_SAVE", "AC_LANG_C", "AC_LANG_RESTORE
 for required in ("AC_LANG_PUSH([C])", "AC_COMPILE_IFELSE(", "AC_LANG_POP([C])"):
     if required not in ACINCLUDE:
         raise AssertionError(f"modern ALSA compile probe is missing: {required}")
+
+for dead in ("AC_CHECK_CPPFLAGS", "cat > conftest.c", "cat > conftest.c++"):
+    if dead in CONFIGURE:
+        raise AssertionError(f"configure.ac still carries hand-written compiler probe code: {dead}")
+
+for required in (
+    "AC_LANG_PUSH([C])",
+    "AC_LANG_PUSH([C++])",
+    "AC_COMPILE_IFELSE(",
+    "ac_check_cflags_result=yes",
+    "ac_check_cxxflags_result=yes",
+):
+    if required not in CONFIGURE:
+        raise AssertionError(f"Autoconf-native compiler flag probe is missing: {required}")
 
 print("Autoconf policy: ok")
