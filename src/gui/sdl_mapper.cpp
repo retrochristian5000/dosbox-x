@@ -34,7 +34,9 @@
 #define NOMINMAX
 #endif
 
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
+#endif
 
 #include "dosbox.h"
 #include "logging.h"
@@ -54,7 +56,9 @@
 #include "menu.h"
 #include "../ints/int10.h"
 
+#if defined(_WIN32) && !defined(HX_DOS)
 #include "SDL_syswm.h"
+#endif
 #include "sdlmain.h"
 #include "shell.h"
 #include "jfont.h"
