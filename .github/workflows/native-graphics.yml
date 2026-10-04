@@ -21,6 +21,8 @@ on:
       - 'src/platform/macos/**'
       - 'src/Makefile.am'
       - 'configure.ac'
+      - 'build'
+      - 'build'
       - 'build-macos'
       - 'build-macos-sdl2'
       - 'scripts/resolve-macos-sdk.bash'
