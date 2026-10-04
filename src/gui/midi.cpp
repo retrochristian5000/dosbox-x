@@ -22,7 +22,9 @@
 #include <string>
 #include <algorithm>
 
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
+#endif
 
 #include "dosbox.h"
 #include "midi.h"
