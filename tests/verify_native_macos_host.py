@@ -35,6 +35,13 @@ require(build, "--enable-native-macos --disable-sdl2 --disable-sdlnet --disable-
         "native configure flags")
 require(build, "otool -L src/dosbox-x", "native dylib dependency guard")
 require(build, "nm -u src/dosbox-x", "native unresolved-symbol guard")
+require(build, 'orig_OBJCXXFLAGS="${OBJCXXFLAGS}"',
+        "macOS build must preserve caller Objective-C++ flags")
+require(build, 'OBJCXXFLAGS="${arch_flags}${orig_OBJCXXFLAGS}"',
+        "macOS target flags must reach Objective-C++ sources")
+for polluted in ('CFLAGS="${CFLAGS}${new}"', 'CXXFLAGS="${CXXFLAGS}${new}"'):
+    if polluted in build:
+        raise AssertionError(f"macOS include search paths leaked into language flags: {polluted}")
 require(legacy, "DOSBOX_MACOS_BACKEND=sdl2", "legacy SDL2 wrapper")
 
 require(configure, "--enable-native-macos", "configure switch")
