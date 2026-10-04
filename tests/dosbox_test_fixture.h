@@ -6,7 +6,9 @@
 
 #include <gtest/gtest.h>
 
-#define SDL_MAIN_HANDLED
+#ifndef SDL_MAIN_HANDLED
+#define SDL_MAIN_HANDLED 1
+#endif
 
 #include "control.h"
 

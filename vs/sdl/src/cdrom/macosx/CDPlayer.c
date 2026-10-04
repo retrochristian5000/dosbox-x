@@ -134,7 +134,8 @@ int ReadTOCData (FSVolumeRefNum theVolume, SDL_CD *theCD)
 {
     HFSUniStr255      dataForkName;
     OSStatus          theErr;
-    FSIORefNum        forkRefNum;
+    FSIORefNum        forkRefNum = 0;
+    int               forkIsOpen = 0;
     SInt64            forkSize;
     Ptr               forkData = 0;
     ByteCount         actualRead;
@@ -180,6 +181,7 @@ int ReadTOCData (FSVolumeRefNum theVolume, SDL_CD *theCD)
         error = "FSOpenFork";
         goto bail;
     }
+    forkIsOpen = 1;
     
     theErr = FSGetForkSize (forkRefNum, &forkSize);
     if (theErr != noErr) {
@@ -315,7 +317,8 @@ cleanup:
     if (forkData != NULL)
         DisposePtr(forkData);
         
-    FSCloseFork (forkRefNum);
+    if (forkIsOpen)
+        FSCloseFork (forkRefNum);
 
     return theErr;
 }
@@ -608,7 +611,7 @@ static void FilePlayNotificationHandler(void * inRefCon, OSStatus inStatus)
         SDL_SetError ("CDPlayer Notification: player is uninitialized");
     } else {
         
-        SDL_SetError ("CDPlayer Notification: unknown error %ld", inStatus);
+        SDL_SetError ("CDPlayer Notification: unknown error %d", (int)inStatus);
     }
 }
 
