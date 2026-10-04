@@ -176,8 +176,22 @@ NSScreen *screen_for_window_position(const int x, const int y)
     int index = display_index_from_window_position(x);
     if (index < 0)
         index = display_index_from_window_position(y);
-    NSScreen *screen = screen_for_index(index);
-    return screen ? screen : [NSScreen mainScreen];
+    if (NSScreen *screen = screen_for_index(index))
+        return screen;
+
+    if (!SDL_WINDOWPOS_ISCENTERED(x) && !SDL_WINDOWPOS_ISUNDEFINED(x) &&
+        !SDL_WINDOWPOS_ISCENTERED(y) && !SDL_WINDOWPOS_ISUNDEFINED(y)) {
+        const CGPoint point = CGPointMake(static_cast<CGFloat>(x),
+                                          static_cast<CGFloat>(y));
+        for (NSScreen *candidate in [NSScreen screens]) {
+            const CGDirectDisplayID display_id = display_id_for_screen(candidate);
+            if (display_id != kCGNullDirectDisplay &&
+                CGRectContainsPoint(CGDisplayBounds(display_id), point))
+                return candidate;
+        }
+    }
+
+    return [NSScreen mainScreen];
 }
 
 NSScreen *screen_for_window(SDL_Window *window)
