@@ -133,6 +133,7 @@ char* revert_escape_newlines(const char* aMessage);
 #endif
 
 #include "control.h"
+#include "codepage.h"
 #include "dos_inc.h"
 #include "dosbox.h"
 #include "menudef.h"
@@ -363,7 +364,6 @@ void ShutDownMemHandles(Section * sec), GFX_ReleaseMouse();
 void resetFontSize(), increaseFontSize(), decreaseFontSize();
 void GetMaxWidthHeight(unsigned int *pmaxWidth, unsigned int *pmaxHeight);
 void MAPPER_CheckEvent(SDL_Event * event), MAPPER_CheckKeyboardLayout(), MAPPER_ReleaseAllKeys();
-bool isDBCSCP(), InitCodePage();
 
 SDL_Block sdl;
 Bitu frames = 0;
@@ -376,11 +376,9 @@ ScreenSizeInfo screen_size_info;
 void FormFeed(bool pressed), PrintText(bool pressed);
 void DOSBOX_UnlockSpeed2(bool pressed), DEBUG_Enable_Handler(bool pressed);
 int FileDirExistCP(const char *name), FileDirExistUTF8(std::string &localname, const char *name);
-bool CodePageHostToGuestUTF16(char *d/*CROSS_LEN*/,const uint16_t *s/*CROSS_LEN*/);
 
 #if (defined(WIN32) && !defined(HX_DOS) || defined(LINUX) && C_X11 || defined(MACOSX)) && defined(C_SDL2)
 static std::string ime_text = "";
-extern bool CodePageHostToGuestUTF8(char *d/*CROSS_LEN*/,const char *s/*CROSS_LEN*/);
 extern bool IME_GetEnable();
 #endif
 
@@ -1190,7 +1188,6 @@ void GFX_SetTitle(int32_t cycles, int frameskip, Bits timing, bool paused) {
 }
 
 bool warn_on_mem_write = false;
-bool CodePageGuestToHostUTF8(char *d/*CROSS_LEN*/,const char *s/*CROSS_LEN*/) ;
 
 #ifdef WIN32
 #ifdef __cplusplus
@@ -1205,7 +1202,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-bool CodePageGuestToHostUTF16(uint16_t* d/*CROSS_LEN*/, const char* s/*CROSS_LEN*/);
 void SanitizeUTF16Newlines(uint16_t* utf16Message, size_t maxLen) {
     for(size_t i = 0; i < maxLen && utf16Message[i] != 0; ++i) {
         if(utf16Message[i] == 0x25D9) {

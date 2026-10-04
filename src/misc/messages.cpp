@@ -22,6 +22,7 @@
 #include <string.h>
 #include "dosbox.h"
 #include "cross.h"
+#include "codepage.h"
 #include "logging.h"
 #include "support.h"
 #include "setup.h"
@@ -46,7 +47,7 @@ using namespace std;
 int msgcodepage = 0, lastmsgcp = 0;
 bool morelen = false, inmsg = false, loadlang = false;
 bool uselangcp = false; // True if Language file is loaded via CONFIG -set langcp option. Use codepage specified in the language file 
-bool isSupportedCP(int newCP), CodePageHostToGuestUTF8(char *d/*CROSS_LEN*/,const char *s/*CROSS_LEN*/), CodePageGuestToHostUTF8(char *d/*CROSS_LEN*/,const char *s/*CROSS_LEN*/), systemmessagebox(char const * aTitle, char const * aMessage, char const * aDialogType, char const * aIconType, int aDefaultButton), OpenGL_using(void);
+bool systemmessagebox(char const *aTitle, char const *aMessage, char const *aDialogType, char const *aIconType, int aDefaultButton), OpenGL_using(void);
 void InitFontHandle(void), ShutFontHandle(void), refreshExtChar(void), SetIME(void), runRescan(const char *str), menu_update_dynamic(void), menu_update_autocycle(void), update_bindbutton_text(void), set_eventbutton_text(const char *eventname, const char *buttonname), JFONT_Init(), DOSBox_SetSysMenu(), UpdateSDLDrawTexture(), makestdcp950table(), makeseacp951table();
 std::string langname = "", langnote = "", GetDOSBoxXPath(bool withexe=false);
 extern int lastcp, FileDirExistUTF8(std::string &localname, const char *name), toSetCodePage(DOS_Shell *shell, int newCP, int opt);

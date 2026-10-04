@@ -3,6 +3,7 @@ bios.h \
 bios_disk.h \
 util_pointer.h \
 callback.h \
+codepage.h \
 cpu.h \
 cross.h \
 control.h \

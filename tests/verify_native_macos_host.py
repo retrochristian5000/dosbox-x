@@ -35,6 +35,9 @@ metal = read("src/output/output_metal.mm")
 metal_header = read("src/output/output_metal.h")
 sdlmain_header = read("include/sdlmain.h")
 mapper_header = read("include/mapper.h")
+codepage_header = read("include/codepage.h")
+messages_cpp = read("src/misc/messages.cpp")
+clipboard_cpp = read("src/misc/clipboard.cpp")
 menu_cpp = read("src/gui/menu.cpp")
 sdl_gui = read("src/gui/sdl_gui.cpp")
 sdlmain_cpp = read("src/gui/sdlmain.cpp")
@@ -127,6 +130,25 @@ if "extern void GUI_Run(bool pressed);" in sdlmain_cpp:
     raise AssertionError("sdlmain.cpp still redeclares GUI_Run instead of using sdlmain.h")
 if "static int my_quartz_match_window_to_monitor" not in menu:
     raise AssertionError("private Quartz helper should have internal linkage")
+
+for declaration in (
+    "bool InitCodePage(void);",
+    "bool CodePageHostToGuestUTF8(char *dst, const char *src);",
+    "bool CodePageGuestToHostUTF8(char *dst, const char *src);",
+    "bool CodePageHostToGuestUTF16(char *dst, const uint16_t *src);",
+    "bool CodePageGuestToHostUTF16(uint16_t *dst, const char *src);",
+):
+    if declaration not in codepage_header:
+        raise AssertionError(f"codepage API declaration is missing: {declaration}")
+
+for source, label in (
+    (menu, "menu_macos.mm"),
+    (sdlmain_cpp, "sdlmain.cpp"),
+    (messages_cpp, "messages.cpp"),
+    (clipboard_cpp, "clipboard.cpp"),
+):
+    if "CodePageGuestToHostUTF8(char *d" in source or "InitCodePage();" in source:
+        raise AssertionError(f"{label} still carries ad-hoc codepage forward declarations")
 
 for arc_source, label in ((native, "native_macos.mm"), (metal, "output_metal.mm")):
     if " release]" in arc_source or " autorelease]" in arc_source:

@@ -1,6 +1,7 @@
 /* Mac OS X portion of menu.cpp */
 
 #include "config.h"
+#include "codepage.h"
 #include "dos_inc.h"
 #include "menu.h"
 #include "mapper.h"
@@ -128,7 +129,6 @@ void IME_SetEnable(int state) {
 extern int pause_menu_item_tag;
 
 char tempstr[4096];
-bool InitCodePage(), CodePageGuestToHostUTF8(char *d/*CROSS_LEN*/,const char *s/*CROSS_LEN*/);
 
 void GetClipboard(std::string* result) {
     if (!result)
