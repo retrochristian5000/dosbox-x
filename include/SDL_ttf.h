@@ -31,7 +31,9 @@
 #ifndef SDL_TTF_H_
 #define SDL_TTF_H_
 
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
+#endif
 #include "begin_code.h"
 
 /* Set up for C function definitions, even when using C++ */
