@@ -152,3 +152,10 @@
 #define SDL_ThreadID                    DOSBoxMac_ThreadID
 #define SDL_getenv                      DOSBoxMac_getenv
 #define SDL_setenv                      DOSBoxMac_setenv
+
+/*
+ * Pull in only the SDL-shaped compile ABI that native macOS still consumes.
+ * Function declarations are seen after the remaps above, so they declare the
+ * DOSBoxMac_* entry points rather than SDL runtime symbols.
+ */
+#include "native_macos_sdl_abi.h"
