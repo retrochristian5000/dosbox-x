@@ -277,6 +277,14 @@ require(metal, "convertRectToBacking:metalView.bounds",
         "Metal drawable size must come from AppKit backing conversion")
 require(metal, "layer.framebufferOnly = YES;",
         "Metal drawable should use framebuffer-only optimization")
+require(macosx_host_header, "void *macosx_native_content_view(void);",
+        "native AppKit content-view accessor declaration")
+require(native, "void *macosx_native_content_view(void)",
+        "native AppKit content-view accessor implementation")
+require(metal, "macosx_native_content_view()",
+        "native Metal path must consume the AppKit content view directly")
+require(metal, "#if !(defined(C_NATIVE_MACOS) && C_NATIVE_MACOS)",
+        "SDL SysWM include must be excluded from native Metal")
 require(sdlmain_cpp, "SDL_WINDOWEVENT_DISPLAY_CHANGED",
         "macOS display changes must refresh output geometry")
 require(sdlmain_cpp, "static int GFX_GetActiveDisplayIndex()",
