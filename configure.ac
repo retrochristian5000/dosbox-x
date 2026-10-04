@@ -72,14 +72,22 @@ if $CXX $CPPFLAGS $CXXFLAGS -Werror -c -o conftest.o conftest.c++ [$1] > /dev/nu
 then
   AC_MSG_RESULT([yes])
   CXXFLAGS="${CXXFLAGS} [$1]"
-  dnl AC_CHECK_CPPFLAGS([$1]) #CXXFLAGS should not be included in CPPFLAGS
-  AC_CHECK_CFLAGS([$1]) #add CFLAGS if accepts as well
   [$2]
 else
   AC_MSG_RESULT([no])
   [$3]
 fi
 ])# AC_CHECK_CXXFLAGS
+
+# AC_CHECK_C_CXXFLAGS(ADDITIONAL-FLAGS)
+#
+# Add a warning/diagnostic flag independently to C and C++ when each
+# compiler accepts it. Never let a C++-only probe mutate CFLAGS.
+AC_DEFUN([AC_CHECK_C_CXXFLAGS],
+[
+  AC_CHECK_CFLAGS([$1])
+  AC_CHECK_CXXFLAGS([$1])
+])# AC_CHECK_C_CXXFLAGS
 
 dnl Detect Clang
 AC_CACHE_CHECK([whether the compiler is clang],
@@ -456,38 +464,38 @@ fi
 
 dnl I would like to know of any concerns given by the C++ compiler.
 dnl Clang/LLVM already does this to some degree, let's get GCC to do it too.
-AC_CHECK_CXXFLAGS([ -Wall ])
-AC_CHECK_CXXFLAGS([ -Wextra ])
-AC_CHECK_CXXFLAGS([ -Wunused ])
-AC_CHECK_CXXFLAGS([ -pedantic ])
-AC_CHECK_CXXFLAGS([ -Wno-error=format-security ])     # imfc.cpp and later versions of GCC, see https://github.com/joncampbell123/dosbox-x/issues/4436
-AC_CHECK_CXXFLAGS([ -Wno-error=incompatible-pointer-types ]) # required to compile speexdsp/fftwrap.c with GCC 14
+AC_CHECK_C_CXXFLAGS([ -Wall ])
+AC_CHECK_C_CXXFLAGS([ -Wextra ])
+AC_CHECK_C_CXXFLAGS([ -Wunused ])
+AC_CHECK_C_CXXFLAGS([ -pedantic ])
+AC_CHECK_C_CXXFLAGS([ -Wno-error=format-security ])     # imfc.cpp and later versions of GCC, see https://github.com/joncampbell123/dosbox-x/issues/4436
+AC_CHECK_CFLAGS([ -Wno-error=incompatible-pointer-types ]) # required to compile speexdsp/fftwrap.c with GCC 14
 #AC_CHECK_CXXFLAGS([ -Wconversion ])      DO NOT ENABLE. THIS WARNING IS WAY TOO PEDANTIC TO BE USEFUL, EXCEPT FOR SPECIFIC CASES
 #AC_CHECK_CXXFLAGS([ -Wsign-conversion ])
-AC_CHECK_CXXFLAGS([ -Wlogical-op ])
+AC_CHECK_C_CXXFLAGS([ -Wlogical-op ])
 AC_CHECK_CXXFLAGS([ -Wsign-promo ])
 AC_CHECK_CXXFLAGS([ -Wconversion-null ])
 #AC_CHECK_CXXFLAGS([ -Woverloaded-virtual ])    NOT TOO USEFUL
 AC_CHECK_CXXFLAGS([ -Wsuggest-override ])
 AC_CHECK_CXXFLAGS([ -Wnon-virtual-dtor ])
-AC_CHECK_CXXFLAGS([ -Wno-deprecated-declarations ])
+AC_CHECK_C_CXXFLAGS([ -Wno-deprecated-declarations ])
 
 dnl Let GCC 7.3.x know that the "fall through" switch cases in this codebase
 dnl are often intentional.
-AC_CHECK_CXXFLAGS([ -Wno-implicit-fallthrough ])
+AC_CHECK_C_CXXFLAGS([ -Wno-implicit-fallthrough ])
 
 dnl Stop reporting "type punning" warnings, I'm sick of hearing about it.
-AC_CHECK_CXXFLAGS([ -Wno-strict-aliasing ])
+AC_CHECK_C_CXXFLAGS([ -Wno-strict-aliasing ])
 
 dnl other
-AC_CHECK_CXXFLAGS([ -Wno-missing-field-initializers ])
-AC_CHECK_CXXFLAGS([ -Wno-format-zero-length ])
+AC_CHECK_C_CXXFLAGS([ -Wno-missing-field-initializers ])
+AC_CHECK_C_CXXFLAGS([ -Wno-format-zero-length ])
 
 if test "x$is_clang" = xyes; then
   dnl Clang/LLVM warning: don't care the address of a member may be unaligned, unless targeting ARM!
-  AC_CHECK_CXXFLAGS([ -Wno-address-of-packed-member ])
+  AC_CHECK_C_CXXFLAGS([ -Wno-address-of-packed-member ])
   dnl Clang/LLVM warning: don't care about int to void*, since void* is either same size or larger
-  AC_CHECK_CXXFLAGS([ -Wno-int-to-void-pointer-cast ])
+  AC_CHECK_C_CXXFLAGS([ -Wno-int-to-void-pointer-cast ])
 fi
 
 dnl Some stuff for the icon and other makefile platform stuff.
