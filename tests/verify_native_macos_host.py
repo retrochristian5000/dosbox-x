@@ -22,6 +22,8 @@ def require(text, needle, label):
 
 build = read("build-macos")
 legacy = read("build-macos-sdl2")
+sdk_resolver = read("scripts/resolve-macos-sdk.bash")
+llvm_bootstrap = read("scripts/bootstrap-native-llvm.bash")
 configure = read("configure.ac")
 makefile = read("src/Makefile.am")
 compat = read("src/platform/macos/native_macos_compat.h")
@@ -37,6 +39,18 @@ require(build, "otool -L src/dosbox-x", "native dylib dependency guard")
 require(build, "nm -u src/dosbox-x", "native unresolved-symbol guard")
 require(build, 'orig_OBJCXXFLAGS="${OBJCXXFLAGS}"',
         "macOS build must preserve caller Objective-C++ flags")
+require(build, 'SDKROOT="$(bash "$top/scripts/resolve-macos-sdk.bash")"',
+        "macOS build must resolve the active SDK")
+require(build, '"${CC:-cc}" ${arch_flags} -x c -fsyntax-only -',
+        "macOS build must probe system headers through the selected compiler")
+require(sdk_resolver, 'xcrun --sdk macosx --show-sdk-path',
+        "macOS SDK resolver must use the active Xcode SDK")
+require(sdk_resolver, '$sdk/usr/include/sys/types.h',
+        "macOS SDK resolver must validate sys/types.h")
+require(llvm_bootstrap, 'export SDKROOT',
+        "standalone LLVM must inherit the macOS SDK")
+require(llvm_bootstrap, '"-DCMAKE_OSX_SYSROOT=$SDKROOT"',
+        "LLVM bootstrap must use the same macOS SDK")
 require(build, 'OBJCXXFLAGS="${arch_flags}${orig_OBJCXXFLAGS}"',
         "macOS target flags must reach Objective-C++ sources")
 for polluted in ('CFLAGS="${CFLAGS}${new}"', 'CXXFLAGS="${CXXFLAGS}${new}"'):

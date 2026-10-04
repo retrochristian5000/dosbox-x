@@ -82,10 +82,10 @@ jobs:
       - name: Build pinned zlib with strict Clang header checks
         env:
           CC: clang
-          AR: llvm-ar
-          RANLIB: llvm-ranlib
+          AR: ar
+          RANLIB: ranlib
           CFLAGS: -std=c11 -Wall -Wextra -Werror
         run: |
           sh build-scripts/zlib/build-dosbox.sh
           test -s .build/zlib-host/lib/libz.a
-          llvm-ar t .build/zlib-host/lib/libz.a >/dev/null
+          ar t .build/zlib-host/lib/libz.a >/dev/null

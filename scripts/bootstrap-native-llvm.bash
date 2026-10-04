@@ -26,7 +26,11 @@ done
 host_os="$(uname -s)"
 host_arch="$(uname -m)"
 case "$host_os" in
-    Darwin) host_tag=macos ;;
+    Darwin)
+        host_tag=macos
+        SDKROOT="$(bash "$root/scripts/resolve-macos-sdk.bash")"
+        export SDKROOT
+        ;;
     Linux) host_tag=linux ;;
     *) printf 'error: WHP LLVM bootstrap currently supports macOS and Linux hosts, not %s\n' "$host_os" >&2; exit 1 ;;
 esac
@@ -112,7 +116,10 @@ cmake_args=(
     -DCLANG_INCLUDE_TESTS=OFF
 )
 if [ "$host_os" = Darwin ]; then
-    cmake_args+=("-DCMAKE_OSX_ARCHITECTURES=$cmake_arch")
+    cmake_args+=(
+        "-DCMAKE_OSX_ARCHITECTURES=$cmake_arch"
+        "-DCMAKE_OSX_SYSROOT=$SDKROOT"
+    )
 fi
 
 printf 'Configuring pinned LLVM %s for %s/%s\n' "$expected_revision" "$host_os" "$host_arch" >&2

@@ -12,6 +12,8 @@ on:
       - 'configure.ac'
       - 'build-macos'
       - 'build-macos-sdl2'
+      - 'scripts/resolve-macos-sdk.bash'
+      - 'scripts/bootstrap-native-llvm.bash'
       - '.github/workflows/native-graphics.yml'
   pull_request:
     paths:
@@ -25,6 +27,8 @@ on:
       - 'configure.ac'
       - 'build-macos'
       - 'build-macos-sdl2'
+      - 'scripts/resolve-macos-sdk.bash'
+      - 'scripts/bootstrap-native-llvm.bash'
       - '.github/workflows/native-graphics.yml'
 permissions:
   contents: read
@@ -37,3 +41,14 @@ jobs:
         run: python3 tests/verify_native_graphics.py
       - name: Verify native macOS host boundary
         run: python3 tests/verify_native_macos_host.py
+
+  macos-sdk:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Resolve and verify macOS SDK system headers
+        run: |
+          sdk="$(bash scripts/resolve-macos-sdk.bash)"
+          test -f "$sdk/usr/include/sys/types.h"
+          printf '#include <sys/types.h>\nstatic off_t probe;\nint main(void) { return probe != 0; }\n' |
+            SDKROOT="$sdk" clang -std=c11 -Wall -Wextra -Werror -x c -fsyntax-only -
