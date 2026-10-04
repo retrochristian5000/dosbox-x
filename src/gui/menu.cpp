@@ -25,8 +25,9 @@
 #include "menu.h"
 #include "macosx_host.h"
 #include "menudef.h"
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
-#include "SDL_syswm.h"
+#endif
 #include "bios_disk.h"
 #include "ide.h" // for ide support
 #include "mapper.h"
