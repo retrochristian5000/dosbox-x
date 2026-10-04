@@ -17,6 +17,11 @@ void macosx_init_dock_menu(void);
 void macosx_GetWindowDPI(ScreenSizeInfo &info);
 void qz_set_match_monitor_cb(void);
 
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+/* AppKit object remains opaque outside Objective-C++ translation units. */
+void *macosx_native_content_view(void);
+#endif
+
 std::string macosx_prompt_folder(const char *default_folder);
 void macosx_alert(const char *title, const char *message);
 int macosx_yesno(const char *title, const char *message);
