@@ -43,7 +43,9 @@
 #include FT_GLYPH_H
 #include FT_TRUETYPE_IDS_H
 
+#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
+#endif
 #include "SDL_endian.h"
 #include "SDL_ttf.h"
 
