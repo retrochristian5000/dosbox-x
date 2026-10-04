@@ -18,6 +18,23 @@
 # include <ApplicationServices/ApplicationServices.h>
 # include <IOKit/pwr_mgt/IOPMLib.h>
 
+#if defined(__clang__)
+# if __has_feature(objc_arc)
+#  error "menu_macos.mm uses manual reference counting and must be compiled without ARC"
+# endif
+#endif
+
+#if DOSBOXMENU_TYPE == DOSBOXMENU_NSMENU
+@interface NSApplication (DOSBoxX)
+- (void)DOSBoxXMenuAction:(id)sender;
+- (void)DOSBoxXMenuActionNewInstance:(id)sender;
+- (void)DOSBoxXMenuActionMapper:(id)sender;
+- (void)DOSBoxXMenuActionCapMouse:(id)sender;
+- (void)DOSBoxXMenuActionCfgGUI:(id)sender;
+- (void)DOSBoxXMenuActionPause:(id)sender;
+@end
+#endif
+
 #if !defined(C_SDL2)
 extern "C" void* sdl1_hax_stock_macosx_menu(void);
 extern "C" void sdl1_hax_stock_macosx_menu_additem(NSMenu *modme);
@@ -73,32 +90,44 @@ void MacOSEnableWindowCapture(unsigned int enable) {
 
 #if defined(MACOSX) && defined(C_SDL2)
 bool IME_GetEnable() {
-    TISInputSourceRef is = TISCopyCurrentKeyboardInputSource();
-    CFBooleanRef ret = (CFBooleanRef)TISGetInputSourceProperty(is, kTISPropertyInputSourceIsASCIICapable);
-    return !CFBooleanGetValue(ret);
+    TISInputSourceRef source = TISCopyCurrentKeyboardInputSource();
+    if (!source)
+        return false;
+
+    CFBooleanRef ascii_capable = (CFBooleanRef)TISGetInputSourceProperty(
+        source, kTISPropertyInputSourceIsASCIICapable);
+    const bool enabled = ascii_capable ? !CFBooleanGetValue(ascii_capable) : false;
+    CFRelease(source);
+    return enabled;
 }
 
 void IME_SetEnable(int state) {
-    if(state) {
-        NSString *locale;
+    if (state) {
         NSArray *languages = [NSLocale preferredLanguages];
-        if (languages != nil) {
-            locale = [languages objectAtIndex:0];
-        } else {
-            locale = [[NSLocale currentLocale] objectForKey:NSLocaleLanguageCode];
-        }
+        NSString *locale = [languages count] > 0
+                                 ? [languages objectAtIndex:0]
+                                 : [[NSLocale currentLocale] objectForKey:NSLocaleLanguageCode];
+        if (!locale)
+            return;
+
         TISInputSourceRef source = TISCopyInputSourceForLanguage((CFStringRef)locale);
         if (source) {
             TISSelectInputSource(source);
+            CFRelease(source);
         }
-    } else {
-        NSArray *source_list = CFBridgingRelease(TISCreateASCIICapableInputSourceList());
-        TISInputSourceRef source;
-        source = (__bridge TISInputSourceRef)([source_list firstObject]);
-        if (source) {
-            TISSelectInputSource(source);
-        }
+        return;
     }
+
+    CFArrayRef sources = TISCreateASCIICapableInputSourceList();
+    if (!sources)
+        return;
+
+    if (CFArrayGetCount(sources) > 0) {
+        TISInputSourceRef source = (TISInputSourceRef)CFArrayGetValueAtIndex(sources, 0);
+        if (source)
+            TISSelectInputSource(source);
+    }
+    CFRelease(sources);
 }
 #endif
 
@@ -112,16 +141,23 @@ char tempstr[4096];
 bool InitCodePage(), CodePageGuestToHostUTF8(char *d/*CROSS_LEN*/,const char *s/*CROSS_LEN*/);
 
 void GetClipboard(std::string* result) {
-	NSPasteboard* pb = [NSPasteboard generalPasteboard];
-	NSString* text = [pb stringForType:NSPasteboardTypeString];
-	*result = std::string([text UTF8String]);
+    if (!result)
+        return;
+
+    NSPasteboard *pb = [NSPasteboard generalPasteboard];
+    NSString *text = [pb stringForType:NSPasteboardTypeString];
+    const char *utf8 = [text UTF8String];
+    result->assign(utf8 ? utf8 : "");
 }
 
 bool SetClipboard(std::string value) {
-	NSPasteboard* pb = [NSPasteboard generalPasteboard];
-	NSString* text = [NSString stringWithUTF8String:value.c_str()];
-	[pb clearContents];
-	return [pb setString:text forType:NSPasteboardTypeString];
+    NSPasteboard *pb = [NSPasteboard generalPasteboard];
+    NSString *text = [NSString stringWithUTF8String:value.c_str()];
+    if (!text)
+        return false;
+
+    [pb clearContents];
+    return [pb setString:text forType:NSPasteboardTypeString];
 }
 
 bool has_touch_bar_support = false;
@@ -178,7 +214,7 @@ extern void ext_signal_host_key(bool enable);
 {
     fprintf(stderr,"Host key cancelled\n");
     ext_signal_host_key(false);
-    [super touchesEndedWithEvent:event];
+    [super touchesCancelledWithEvent:event];
 }
 @end
 #endif
@@ -200,7 +236,7 @@ extern void ext_signal_host_key(bool enable);
         item.view = [NSButton buttonWithTitle:@"Mapper" target:NSApp action:@selector(DOSBoxXMenuActionMapper:)];
         item.customizationLabel = TouchBarCustomIdentifier;
 
-        return item;
+        return [item autorelease];
     }
     else if ([identifier isEqualToString:TouchBarHostKeyIdentifier]) {
         NSCustomTouchBarItem *item = [[NSCustomTouchBarItem alloc] initWithIdentifier:TouchBarHostKeyIdentifier];
@@ -208,7 +244,7 @@ extern void ext_signal_host_key(bool enable);
         item.view = [DOSBoxHostButton buttonWithTitle:@"Host Key" target:self action:@selector(onHostKey:)];
         item.customizationLabel = TouchBarCustomIdentifier;
 
-        return item;
+        return [item autorelease];
     }
     else if ([identifier isEqualToString:TouchBarCFGGUIIdentifier]) {
         NSCustomTouchBarItem *item = [[NSCustomTouchBarItem alloc] initWithIdentifier:TouchBarCFGGUIIdentifier];
@@ -216,7 +252,7 @@ extern void ext_signal_host_key(bool enable);
         item.view = [NSButton buttonWithTitle:@"Cfg GUI" target:NSApp action:@selector(DOSBoxXMenuActionCfgGUI:)];
         item.customizationLabel = TouchBarCustomIdentifier;
 
-        return item;
+        return [item autorelease];
     }
     else if ([identifier isEqualToString:TouchBarPauseIdentifier]) {
         NSCustomTouchBarItem *item = [[NSCustomTouchBarItem alloc] initWithIdentifier:TouchBarPauseIdentifier];
@@ -224,7 +260,7 @@ extern void ext_signal_host_key(bool enable);
         item.view = [NSButton buttonWithImage:[NSImage imageNamed:NSImageNameTouchBarPauseTemplate] target:NSApp action:@selector(DOSBoxXMenuActionPause:)];
         item.customizationLabel = TouchBarCustomIdentifier;
 
-        return item;
+        return [item autorelease];
     }
     else if ([identifier isEqualToString:TouchBarCursorCaptureIdentifier]) {
         NSCustomTouchBarItem *item = [[NSCustomTouchBarItem alloc] initWithIdentifier:TouchBarCursorCaptureIdentifier];
@@ -232,7 +268,7 @@ extern void ext_signal_host_key(bool enable);
         item.view = [NSButton buttonWithTitle:@"CapMouse" target:NSApp action:@selector(DOSBoxXMenuActionCapMouse:)];
         item.customizationLabel = TouchBarCustomIdentifier;
 
-        return item;
+        return [item autorelease];
     }
     else {
         fprintf(stderr,"Touch bar warning, unknown item '%s'\n",[identifier UTF8String]);
@@ -344,7 +380,6 @@ void macosx_init_dock_menu(void) {
     {
 	    NSMenuItem *item = [NSMenuItem separatorItem];
         [menu addItem:item];
-        [item release];
     }
 
     {
@@ -368,7 +403,6 @@ void macosx_init_dock_menu(void) {
             {
                 NSMenuItem *item = [NSMenuItem separatorItem];
                 [menu addItem:item];
-                [item release];
             }
 
             NSString *title = [[NSString alloc] initWithUTF8String: "Start new instance"];
@@ -524,28 +558,28 @@ std::string macosx_prompt_folder(const char *default_folder) {
         }
     }
 
-    [panel release];
-
     return res;
 }
 
 void macosx_alert(const char *title, const char *message) {
     NSAlert *alert = [[NSAlert alloc] init];
-    [alert setMessageText:[NSString stringWithFormat:@"%s",title]];
-    [alert setInformativeText:[NSString stringWithFormat:@"%s",message]];
+    [alert setMessageText:title ? [NSString stringWithUTF8String:title] : @""];
+    [alert setInformativeText:message ? [NSString stringWithUTF8String:message] : @""];
     [alert setAlertStyle:NSAlertStyleInformational];
     [alert runModal];
+    [alert release];
 }
 
 int macosx_yesno(const char *title, const char *message) {
     NSAlert *alert = [[NSAlert alloc] init];
     [alert addButtonWithTitle:@"Yes"];
     [alert addButtonWithTitle:@"No"];
-    [alert setMessageText:[NSString stringWithFormat:@"%s",title]];
-    [alert setInformativeText:[NSString stringWithFormat:@"%s",message]];
+    [alert setMessageText:title ? [NSString stringWithUTF8String:title] : @""];
+    [alert setInformativeText:message ? [NSString stringWithUTF8String:message] : @""];
     [alert setAlertStyle:NSAlertStyleInformational];
-    int res = [alert runModal];
-    return res==NSAlertFirstButtonReturn?1:0;
+    const NSModalResponse response = [alert runModal];
+    [alert release];
+    return response == NSAlertFirstButtonReturn ? 1 : 0;
 }
 
 int macosx_yesnocancel(const char *title, const char *message) {
@@ -553,16 +587,17 @@ int macosx_yesnocancel(const char *title, const char *message) {
     [alert addButtonWithTitle:@"Yes"];
     [alert addButtonWithTitle:@"No"];
     [alert addButtonWithTitle:@"Cancel"];
-    [alert setMessageText:[NSString stringWithFormat:@"%s",title]];
-    [alert setInformativeText:[NSString stringWithFormat:@"%s",message]];
+    [alert setMessageText:title ? [NSString stringWithUTF8String:title] : @""];
+    [alert setInformativeText:message ? [NSString stringWithUTF8String:message] : @""];
     [alert setAlertStyle:NSAlertStyleInformational];
-    int res = [alert runModal];
-    return res==NSAlertFirstButtonReturn?1:(res==NSAlertSecondButtonReturn?0:-1);
+    const NSModalResponse response = [alert runModal];
+    [alert release];
+    return response == NSAlertFirstButtonReturn
+                   ? 1
+                   : (response == NSAlertSecondButtonReturn ? 0 : -1);
 }
 
 #if DOSBOXMENU_TYPE == DOSBOXMENU_NSMENU /* Mac OS X NSMenu / NSMenuItem handle */
-@interface NSApplication (DOSBoxX)
-@end
 
 void *sdl_hax_nsMenuItemFromTag(void *nsMenu, unsigned int tag) {
 	NSMenuItem *ns_item = [((NSMenu*)nsMenu) itemWithTag: tag];
@@ -681,7 +716,7 @@ void sdl_hax_nsMenuAddItem(void *nsMenu,void *nsMenuItem) {
 }
 
 void* sdl_hax_nsMenuAllocSeparator(void) {
-	return (void*)([NSMenuItem separatorItem]);
+    return (void *)[[NSMenuItem separatorItem] retain];
 }
 
 void sdl_hax_nsMenuItemRelease(void *nsMenuItem) {

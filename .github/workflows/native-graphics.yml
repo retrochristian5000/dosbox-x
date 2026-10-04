@@ -4,6 +4,8 @@ on:
     paths:
       - 'src/output/**'
       - 'src/gui/sdlmain.cpp'
+      - 'src/gui/menu_macos.mm'
+      - 'src/gui/Makefile.am'
       - 'src/shell/shell.cpp'
       - 'tests/verify_native_graphics.py'
       - 'tests/verify_native_macos_host.py'
@@ -19,6 +21,8 @@ on:
     paths:
       - 'src/output/**'
       - 'src/gui/sdlmain.cpp'
+      - 'src/gui/menu_macos.mm'
+      - 'src/gui/Makefile.am'
       - 'src/shell/shell.cpp'
       - 'tests/verify_native_graphics.py'
       - 'tests/verify_native_macos_host.py'

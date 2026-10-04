@@ -18,6 +18,12 @@
 #import <IOKit/hid/IOHIDLib.h>
 #import <IOKit/hid/IOHIDUsageTables.h>
 
+#if defined(__clang__)
+# if !__has_feature(objc_arc)
+#  error "native_macos.mm requires ARC"
+# endif
+#endif
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>

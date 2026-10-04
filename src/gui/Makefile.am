@@ -20,6 +20,8 @@ libgui_a_SOURCES += \
 endif
 
 if MACOSX
+# menu_macos.mm owns Cocoa objects manually; keep that ownership model explicit.
+libgui_a_OBJCXXFLAGS = $(AM_OBJCXXFLAGS) -fno-objc-arc
 libgui_a_SOURCES += \
 	menu_macos.mm
 endif

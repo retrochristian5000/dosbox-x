@@ -19,6 +19,12 @@
 #import <QuartzCore/CAMetalLayer.h>
 #import <AppKit/AppKit.h>
 
+#if defined(__clang__)
+# if !__has_feature(objc_arc)
+#  error "output_metal.mm requires ARC"
+# endif
+#endif
+
 #include "output_metal.h"
 
 extern VGA_Type vga;

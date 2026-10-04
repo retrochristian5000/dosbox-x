@@ -18,7 +18,6 @@
 #include "sdlmain.h"
 
 
-using namespace std;
 #if defined(MACOSX) && C_METAL
 #if defined(C_SDL2)
 

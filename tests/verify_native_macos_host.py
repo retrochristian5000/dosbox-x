@@ -26,8 +26,13 @@ sdk_resolver = read("scripts/resolve-macos-sdk.bash")
 llvm_bootstrap = read("scripts/bootstrap-native-llvm.bash")
 configure = read("configure.ac")
 makefile = read("src/Makefile.am")
+gui_makefile = read("src/gui/Makefile.am")
+output_makefile = read("src/output/Makefile.am")
 compat = read("src/platform/macos/native_macos_compat.h")
 native = read("src/platform/macos/native_macos.mm")
+menu = read("src/gui/menu_macos.mm")
+metal = read("src/output/output_metal.mm")
+metal_header = read("src/output/output_metal.h")
 
 require(build, 'macos_backend="${DOSBOX_MACOS_BACKEND:-native}"',
         "build-macos must default to native")
@@ -64,6 +69,27 @@ require(configure, "AM_CONDITIONAL([NATIVE_MACOS]", "native automake conditional
 require(configure, 'SDL_STRING="NativeMacOS"', "native SDL-network isolation")
 require(makefile, "platform/macos/native_macos.mm", "native Objective-C++ source")
 require(makefile, "-fobjc-arc", "native Objective-C++ ARC")
+require(gui_makefile, "-fno-objc-arc", "menu Objective-C++ manual-reference-counting mode")
+require(output_makefile, "-fobjc-arc", "Metal Objective-C++ ARC mode")
+require(native, 'error "native_macos.mm requires ARC"', "native ARC compile guard")
+require(metal, 'error "output_metal.mm requires ARC"', "Metal ARC compile guard")
+require(menu, 'error "menu_macos.mm uses manual reference counting', "menu MRC compile guard")
+require(menu, "CFRelease(source);", "IME copied input source release")
+require(menu, "CFRelease(sources);", "IME created input-source list release")
+require(menu, "return [item autorelease];", "Touch Bar delegate MRC return ownership")
+require(menu, "[super touchesCancelledWithEvent:event];", "Touch Bar cancellation superclass dispatch")
+require(menu, "[alert release];", "manual NSAlert ownership cleanup")
+
+for forbidden in ("CFBridgingRelease", "__bridge", "[panel release]"):
+    if forbidden in menu:
+        raise AssertionError(f"manual-reference-counted menu code contains ARC/over-release pattern: {forbidden}")
+
+for arc_source, label in ((native, "native_macos.mm"), (metal, "output_metal.mm")):
+    if " release]" in arc_source or " autorelease]" in arc_source:
+        raise AssertionError(f"ARC source contains manual Objective-C ownership: {label}")
+
+if "using namespace std;" in metal_header:
+    raise AssertionError("Objective-C++ Metal header leaks the std namespace")
 
 for api in (
     "SDL_Init",
