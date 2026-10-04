@@ -436,7 +436,6 @@ case "$host" in
     *-*-darwin* | *-*-openbsd*)
        dnl El Capitan's refusal to allow sudo make install to /usr/include, and the failure of most open source to
        dnl include from /usr/local/include is irritating and tiresome...
-       CFLAGS="$CFLAGS -I/usr/local/include"
        CPPFLAGS="$CPPFLAGS -I/usr/local/include"
        ;;
 esac
