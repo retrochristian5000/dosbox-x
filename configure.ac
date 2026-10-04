@@ -705,9 +705,12 @@ else
 fi
 AM_CONDITIONAL([C_METAL], [test "x$have_metal" = "xyes"])
 
-# FIXME: Arrggh we need the WHOLE PATH
-pwd=`realpath $srcdir`
-if [[ -z "$pwd" ]]; then pwd=`pwd`; fi
+dnl Resolve the source directory without relying on non-portable realpath(1)
+dnl or Bash [[ ... ]] syntax in the generated configure script.
+src_absdir=`cd "$srcdir" 2>/dev/null && pwd -P`
+if test -z "$src_absdir"; then
+  src_absdir=`pwd -P`
+fi
 
 if test x$enable_emscripten != xyes; then
 dnl Some target detection and actions for them
@@ -1296,8 +1299,7 @@ dnl FEATURE: Whether to use libpcap, and enable ethernet pass-through
 AH_TEMPLATE(C_PCAP,[Define to 1 to enable ethernet pass-through, requires libpcap])
 case "$host" in
     *-*-cygwin* | *-*-mingw32*)
-       CFLAGS="$CFLAGS -I$pwd/vs/pcap"
-       CXXFLAGS="$CXXFLAGS -I$pwd/vs/pcap"
+       CPPFLAGS="$CPPFLAGS -I$src_absdir/vs/pcap"
        AC_DEFINE(C_PCAP,1)
     ;;
     *)
@@ -1542,7 +1544,7 @@ case "$host" in
     if test x$enable_opencow = xyes; then
       LIBS="-lopencow $LIBS -lstdc++ -lopencow" #need to put at the first, also better at the last too.
       LDFLAGS="$LDFLAGS -Wl,--allow-multiple-definition "
-      LIBS="${LIBS//-luser32/-lopencow -luser32}"
+      LIBS=`printf '%s\n' "$LIBS" | sed 's/-luser32/-lopencow -luser32/g'`
     fi
     ;;
 esac
