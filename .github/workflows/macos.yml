@@ -47,6 +47,14 @@ jobs:
           strip $top/src/dosbox-x
           make dosbox-x.app
           mv dosbox-x.app $top/package/dosbox-x
+      - name: Verify macOS Native Incremental Rebuild
+        run: |
+          ./build-macos | tee .build/incremental-native.log
+          grep -q 'Autotools inputs unchanged; reusing generated configure files' .build/incremental-native.log
+          grep -q 'Reusing cached pinned WHP zlib' .build/incremental-native.log
+          grep -q 'Reusing cached libpng' .build/incremental-native.log
+          grep -q 'Reusing cached FreeType' .build/incremental-native.log
+          grep -q 'Reusing DOSBox-X configure state' .build/incremental-native.log
       - name: Build macOS Legacy SDL2
         run: |
           top=`pwd`
@@ -187,6 +195,14 @@ jobs:
           strip $top/src/dosbox-x
           make dosbox-x.app
           mv dosbox-x.app $top/package/dosbox-x
+      - name: Verify macOS Native Incremental Rebuild
+        run: |
+          ./build-macos | tee .build/incremental-native.log
+          grep -q 'Autotools inputs unchanged; reusing generated configure files' .build/incremental-native.log
+          grep -q 'Reusing cached pinned WHP zlib' .build/incremental-native.log
+          grep -q 'Reusing cached libpng' .build/incremental-native.log
+          grep -q 'Reusing cached FreeType' .build/incremental-native.log
+          grep -q 'Reusing DOSBox-X configure state' .build/incremental-native.log
       - name: Build macOS Legacy SDL2
         run: |
           top=`pwd`
