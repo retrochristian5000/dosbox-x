@@ -394,5 +394,10 @@ for arch in ${architectures}; do
         fi
     fi
 
-    cp src/dosbox-x "src/dosbox-x-${arch}"
+    arch_binary="src/dosbox-x-${arch}"
+    if [ ! -f "${arch_binary}" ] || ! cmp -s src/dosbox-x "${arch_binary}"; then
+        cp src/dosbox-x "${arch_binary}"
+    else
+        echo "Architecture binary unchanged; preserving ${arch_binary} timestamp"
+    fi
 done
