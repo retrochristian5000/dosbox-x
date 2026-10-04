@@ -117,7 +117,7 @@ bool CMetal::Initialize(void* nsview, int w, int h)
     layer = [CAMetalLayer layer];
     layer.device = device;
     layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-    layer.framebufferOnly = NO;
+    layer.framebufferOnly = YES;
 
     /* Metal専用NSViewを作る */
     metalView = [[NSView alloc] initWithFrame:view.bounds];
@@ -131,8 +131,15 @@ bool CMetal::Initialize(void* nsview, int w, int h)
     /* SDLのcontentViewに追加 */
     [view addSubview:metalView];
 
-    /* layerサイズ同期 */
+    /*
+     * Let AppKit translate logical window points to backing pixels.  This is
+     * more accurate than multiplying by backingScaleFactor and automatically
+     * follows the window between Retina and non-Retina displays.
+     */
     layer.frame = metalView.bounds;
+    const NSRect initialBacking = [metalView convertRectToBacking:metalView.bounds];
+    layer.contentsScale = metalView.window ? metalView.window.backingScaleFactor : 1.0;
+    layer.drawableSize = initialBacking.size;
 
     /* ---------------------------------
      * 4. CPU framebuffer
@@ -554,9 +561,8 @@ bool CMetal::Resize(uint32_t window_w,
                     uint32_t tex_w,
                     uint32_t tex_h)
 {
-    if (!layer || !view)
+    if (!layer || !view || !metalView)
         return false;
-    const CGFloat scale = view.window ? view.window.backingScaleFactor : [NSScreen mainScreen].backingScaleFactor;
     // Firmware boot paths can render before the DOS BIOS supplies mode metadata.
     const uint32_t mode_w = CurMode && CurMode->swidth ? CurMode->swidth : tex_w;
     const uint32_t mode_h = CurMode && CurMode->sheight ? CurMode->sheight : tex_h;
@@ -617,13 +623,12 @@ bool CMetal::Resize(uint32_t window_w,
         }
     }
 
-    if(window_w == last_window_w &&
-        window_h == last_window_h &&
-        tex_w == last_tex_w &&
-        tex_h == last_tex_h &&
-        layer.contentsScale == scale) {
-        return true; // No change
-    }
+    /*
+     * The backing geometry is checked after AppKit has had a chance to resize
+     * the view. A display move can change backing pixels without changing the
+     * logical window dimensions, so logical dimensions alone are not enough
+     * for an early return.
+     */
 
     /* ---------------------------------
      * 1. Recreate Frame Texture
@@ -653,24 +658,39 @@ bool CMetal::Resize(uint32_t window_w,
         SDL_SetWindowSize(sdl.window, window_w, window_h);
     }
 
-    int real_w = 0, real_h = 0;
-    SDL_GetWindowSize(sdl.window, &real_w, &real_h);
+    /*
+     * AppKit owns the logical view size. Keep the Metal subview attached to
+     * those bounds and ask AppKit for the corresponding backing-pixel rect.
+     */
+    metalView.frame = view.bounds;
+    const NSRect logicalBounds = metalView.bounds;
+    const NSRect backingBounds = [metalView convertRectToBacking:logicalBounds];
+    const CGFloat scale = metalView.window ? metalView.window.backingScaleFactor : 1.0;
 
-    width = (uint32_t)real_w;
-    height = (uint32_t)real_h;
+    width = static_cast<uint32_t>(std::max<CGFloat>(1.0, std::round(logicalBounds.size.width)));
+    height = static_cast<uint32_t>(std::max<CGFloat>(1.0, std::round(logicalBounds.size.height)));
 
-    /* ---------------------------------
-     * 2. Update Retina / HiDPI layer size
-     * --------------------------------- */
     layer.contentsScale = scale;
+    layer.frame = logicalBounds;
+    layer.drawableSize = CGSizeMake(std::max<CGFloat>(1.0, std::round(backingBounds.size.width)),
+                                    std::max<CGFloat>(1.0, std::round(backingBounds.size.height)));
 
-    CGRect newFrame = CGRectMake(0, 0, (CGFloat)width, (CGFloat)height);
-    layer.frame = newFrame;
+    uint32_t dw = static_cast<uint32_t>(layer.drawableSize.width);
+    uint32_t dh = static_cast<uint32_t>(layer.drawableSize.height);
 
-    layer.drawableSize = CGSizeMake(width * scale, height * scale);
-
-    uint32_t dw = (uint32_t)layer.drawableSize.width;
-    uint32_t dh = (uint32_t)layer.drawableSize.height;
+    if (window_w == last_window_w &&
+        window_h == last_window_h &&
+        tex_w == last_tex_w &&
+        tex_h == last_tex_h &&
+        width == last_window_w &&
+        height == last_window_h &&
+        currentViewport.width > 0.0 &&
+        currentViewport.height > 0.0 &&
+        layer.drawableSize.width == currentViewport.width &&
+        layer.drawableSize.height == currentViewport.height &&
+        !sdl.desktop.fullscreen) {
+        return true;
+    }
 
     if (sdl.desktop.fullscreen && render.aspect) {
 
