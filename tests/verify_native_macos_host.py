@@ -29,6 +29,7 @@ configure = read("configure.ac")
 makefile = read("src/Makefile.am")
 gui_makefile = read("src/gui/Makefile.am")
 output_makefile = read("src/output/Makefile.am")
+output_tools_header = read("src/output/output_tools.h")
 compat = read("src/platform/macos/native_macos_compat.h")
 native = read("src/platform/macos/native_macos.mm")
 menu = read("src/gui/menu_macos.mm")
@@ -83,6 +84,12 @@ require(gui_makefile, "-fno-objc-arc", "menu Objective-C++ manual-reference-coun
 require(output_makefile, "-fobjc-arc", "Metal Objective-C++ ARC mode")
 require(native, 'error "native_macos.mm requires ARC"', "native ARC compile guard")
 require(metal, 'error "output_metal.mm requires ARC"', "Metal ARC compile guard")
+require(metal, '#include "output_tools.h"',
+        "Metal implementation must import shared output aspect declarations")
+require(output_tools_header, "extern int aspect_ratio_x, aspect_ratio_y;",
+        "shared output aspect-ratio declaration")
+if "extern int aspect_ratio_x, aspect_ratio_y;" in metal:
+    raise AssertionError("Metal implementation must not redeclare shared aspect-ratio state")
 require(menu, 'error "menu_macos.mm uses manual reference counting', "menu MRC compile guard")
 require(menu, "CFRelease(source);", "IME copied input source release")
 require(menu, "CFRelease(sources);", "IME created input-source list release")
