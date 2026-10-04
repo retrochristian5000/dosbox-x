@@ -5180,6 +5180,11 @@ static void HandleMouseButton(SDL_MouseButtonEvent * button, SDL_MouseMotionEven
                                     runloop = false;
                                     resized = true;
                                     break;
+#if defined(MACOSX)
+                                case SDL_WINDOWEVENT_DISPLAY_CHANGED:
+                                    GFX_ResetScreen();
+                                    break;
+#endif
                                 default:
                                     break;
                             }
@@ -6024,6 +6029,16 @@ void GFX_Events() {
                    GFX_EndTextLines(true);
 #endif
                 continue;
+#if defined(MACOSX)
+            case SDL_WINDOWEVENT_DISPLAY_CHANGED:
+                /*
+                 * AppKit can change backing scale without changing the logical
+                 * window size. Recreate output geometry so Metal/surface paths
+                 * pick up the new display's backing properties.
+                 */
+                GFX_ResetScreen();
+                continue;
+#endif
             case SDL_WINDOWEVENT_RESTORED:
                 GFX_ResetScreen();
                 eatRestoredWindow = true;
