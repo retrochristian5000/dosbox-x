@@ -335,8 +335,23 @@ require(include_makefile, "native_macos_sdl_abi.h",
         "native ABI quarantine header must ship in source distributions")
 require(sdlmain_header, "#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)",
         "sdlmain must skip the SDL umbrella under the native ABI quarantine")
-require(native, '#include "native_macos_sdl_abi.h"',
-        "native host must consume the project-owned ABI quarantine")
+require(native, '#include "native_macos_compat.h"',
+        "native host implementation must import remapped DOSBoxMac declarations")
+if '#include "native_macos_sdl_abi.h"' in native:
+    raise AssertionError(
+        "native_macos.mm bypasses the compatibility declaration layer and can "
+        "leave DOSBoxMac_* cross-calls undeclared"
+    )
+
+for declaration_remap in (
+    "#define SDL_InitSubSystem               DOSBoxMac_InitSubSystem",
+    "#define SDL_FreeSurface                 DOSBoxMac_FreeSurface",
+    "#define SDL_CloseAudioDevice            DOSBoxMac_CloseAudioDevice",
+    "#define SDL_DestroyWindow               DOSBoxMac_DestroyWindow",
+    "#define SDL_GetWindowSize               DOSBoxMac_GetWindowSize",
+):
+    require(compat, declaration_remap,
+            f"native implementation declaration remap for {declaration_remap}")
 native_umbrella_guard = """#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
 #endif"""
