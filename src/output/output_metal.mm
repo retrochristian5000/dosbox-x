@@ -419,6 +419,43 @@ bool CMetal::CreatePipeline()
 
 static CMetal* metal = nullptr;
 
+static bool metal_get_window_size(int &width, int &height)
+{
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    return macosx_native_get_window_size(width, height);
+#else
+    if (!sdl.window)
+        return false;
+    SDL_GetWindowSize(sdl.window, &width, &height);
+    return width > 0 && height > 0;
+#endif
+}
+
+static bool metal_set_window_size(const int width, const int height)
+{
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    return macosx_native_set_window_size(width, height);
+#else
+    if (!sdl.window)
+        return false;
+    SDL_SetWindowSize(sdl.window, width, height);
+    return true;
+#endif
+}
+
+static bool metal_set_fullscreen(const bool fullscreen)
+{
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    return macosx_native_set_fullscreen(fullscreen);
+#else
+    if (!sdl.window)
+        return false;
+    return SDL_SetWindowFullscreen(
+                   sdl.window,
+                   fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) == 0;
+#endif
+}
+
 void metal_init(void)
 {
     OUTPUT_Metal_Shutdown();
@@ -431,13 +468,22 @@ void metal_init(void)
         sdl.window = GFX_SetSDLWindowMode(640, 400, SCREEN_SURFACE);
 
         if(!sdl.window) {
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+            LOG_MSG("METAL: Failed to create native AppKit window");
+#else
             LOG_MSG("SDL: Failed to create window: %s", SDL_GetError());
+#endif
             OUTPUT_SURFACE_Select();
             return;
         }
 
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+        if (sdl.surface && sdl.surface->format)
+            sdl.desktop.pixelFormat = sdl.surface->format->format;
+#else
         sdl.surface = SDL_GetWindowSurface(sdl.window);
         sdl.desktop.pixelFormat = SDL_GetWindowPixelFormat(sdl.window);
+#endif
     }
 
     /*
@@ -511,9 +557,7 @@ Bitu OUTPUT_Metal_SetSize(void)
      * Window logical size
      * ------------------------ */
     int cur_w = 0, cur_h = 0;
-    SDL_GetWindowSize(sdl.window, &cur_w, &cur_h);
-
-    if (cur_w <= 0 || cur_h <= 0)
+    if (!metal_get_window_size(cur_w, cur_h))
         return 0;
 
     /* ------------------------
@@ -528,12 +572,12 @@ Bitu OUTPUT_Metal_SetSize(void)
         metal->was_fullscreen = true;
         metal->window_width = cur_w;
         metal->window_height = cur_w * sdl.draw.height / sdl.draw.width;
-        SDL_SetWindowFullscreen(
-            sdl.window,
-            SDL_WINDOW_FULLSCREEN_DESKTOP);
+        if (!metal_set_fullscreen(true))
+            return 0;
     }
     else if(!sdl.desktop.fullscreen && metal->was_fullscreen){
-        SDL_SetWindowFullscreen(sdl.window, 0);
+        if (!metal_set_fullscreen(false))
+            return 0;
         cur_w = metal->window_width;
         cur_h = metal->window_height;
         metal->was_fullscreen = false;
@@ -603,17 +647,19 @@ bool CMetal::Resize(uint32_t window_w,
                 if(window_w < tex_w) window_w = tex_w; // Keep at least original size
                 window_h = (uint32_t)((double)window_w / target_ratio + 0.5);
             }
-            if(window_w != last_window_w || window_h != last_window_h) SDL_SetWindowSize(sdl.window, window_w, window_h);
+            if (window_w != last_window_w || window_h != last_window_h)
+                metal_set_window_size(window_w, window_h);
             last_scalesize = render.scale.size;
         }
         if(render.aspect) {
             int real_w = 0, real_h = 0;
-            SDL_GetWindowSize(sdl.window, &real_w, &real_h);
+            metal_get_window_size(real_w, real_h);
             if(real_w > 0) {
                 window_w = real_w;
                 window_h = (uint32_t)((double)window_w / target_ratio + 0.5);
             }
-            if(window_w != last_window_w || window_h != last_window_h) SDL_SetWindowSize(sdl.window, window_w, window_h);
+            if (window_w != last_window_w || window_h != last_window_h)
+                metal_set_window_size(window_w, window_h);
             //LOG_MSG("window_w=%d, window_h=%d, sdl.draw.width=%d, real_w=%d, real_h=%d, w/h=%lf, target=%lf", window_w, window_h, sdl.draw.width, real_w, real_h, (double)real_w/real_h, target_ratio);
         }
     }
@@ -652,10 +698,10 @@ bool CMetal::Resize(uint32_t window_w,
     if(sdl.window && !sdl.desktop.fullscreen) {
         int actual_w = 0;
         int actual_h = 0;
-        SDL_GetWindowSize(sdl.window, &actual_w, &actual_h);
-        if (actual_w != static_cast<int>(window_w) ||
-            actual_h != static_cast<int>(window_h)) {
-            SDL_SetWindowSize(sdl.window, window_w, window_h);
+        if (metal_get_window_size(actual_w, actual_h) &&
+            (actual_w != static_cast<int>(window_w) ||
+             actual_h != static_cast<int>(window_h))) {
+            metal_set_window_size(window_w, window_h);
         }
     }
 
