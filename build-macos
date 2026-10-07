@@ -84,10 +84,6 @@ else
     echo "Autotools inputs unchanged; reusing generated configure files"
 fi
 
-if [ "${macos_backend}" = "sdl2" ]; then
-    chmod +x vs/sdl2/build-dosbox.sh
-fi
-
 orig_CFLAGS="${CFLAGS:-}"
 orig_LDFLAGS="${LDFLAGS:-}"
 orig_CPPFLAGS="${CPPFLAGS:-}"
@@ -99,11 +95,13 @@ orig_PKG_CONFIG_PATH="${PKG_CONFIG_PATH:-}"
 active_config="$top/.build/macos-active-config.key"
 
 clean_dependency_builds() {
-    rm -rf "$top/vs/sdl2/linux-host" "$top/vs/sdl2/linux-build"
+    if [ "${macos_backend}" = "sdl2" ]; then
+        rm -rf "$top/vs/sdl2/linux-host" "$top/vs/sdl2/linux-build"
+        rm -rf "$top/vs/sdl2net/linux-host" "$top/vs/sdl2net/linux-build"
+    fi
     rm -rf "$top/.build/zlib-host" "$top/.build/zlib-build"
     rm -rf "$top/vs/libpng/linux-host" "$top/vs/libpng/linux-build"
     rm -rf "$top/vs/freetype/linux-host" "$top/vs/freetype/linux-build"
-    rm -rf "$top/vs/sdl2net/linux-host" "$top/vs/sdl2net/linux-build"
 }
 
 clean_top_level() {
@@ -231,34 +229,9 @@ for arch in ${architectures}; do
         }
 
     if [ "${macos_backend}" = "sdl2" ]; then
-        sdl_key="$(dependency_key sdl2)"
-        if dependency_is_fresh "$top/vs/sdl2/linux-host" "$sdl_key" \
-            "$top/vs/sdl2" "$top/vs/sdl2/build-dosbox.sh"; then
-            echo "Reusing cached SDL 2.x for ${arch}"
-        else
-            echo "Compiling the legacy in-tree SDL 2.x backend"
-            (cd vs/sdl2 && ./build-dosbox.sh) || exit 1
-            mark_dependency "$top/vs/sdl2/linux-host" "$sdl_key"
-        fi
-        new="-I${top}/vs/sdl2/linux-host/include "
-        nld="-L${top}/vs/sdl2/linux-host/lib "
-        CPPFLAGS="${CPPFLAGS} ${new}"
-        LDFLAGS="${LDFLAGS} ${nld}"
-
-        sdlnet_key="$(dependency_key sdl2net)"
-        if dependency_is_fresh "$top/vs/sdl2net/linux-host" "$sdlnet_key" \
-            "$top/vs/sdl2net" "$top/vs/sdl2net/build-dosbox.sh"; then
-            echo "Reusing cached SDL2_net for ${arch}"
-        else
-            echo "Compiling the legacy in-tree SDL2_net backend"
-            chmod +x vs/sdl2net/*.sh
-            (cd vs/sdl2net && ./build-dosbox.sh) || exit 1
-            mark_dependency "$top/vs/sdl2net/linux-host" "$sdlnet_key"
-        fi
-        new="-I${top}/vs/sdl2net/linux-host/include "
-        nld="-L${top}/vs/sdl2net/linux-host/lib "
-        LDFLAGS="${LDFLAGS} ${nld}"
-        CPPFLAGS="${CPPFLAGS} ${new}"
+        # Keep all SDL runtime construction outside the native macOS path.
+        # shellcheck source=scripts/build-macos-legacy-sdl.bash
+        source "$top/scripts/build-macos-legacy-sdl.bash" || exit 1
     else
         echo "Using native AppKit/Core Audio/IOKit host backend (no SDL runtime)"
     fi
