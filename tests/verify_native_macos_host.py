@@ -166,8 +166,18 @@ require(menu, "static DOSBoxXTouchBarDelegate *touchBarDelegate = nil;",
         "Touch Bar weak delegate must have explicit process lifetime")
 if "touchBar.delegate = [DOSBoxXTouchBarDelegate alloc];" in menu:
     raise AssertionError("Touch Bar weak delegate depends on a leaked allocation")
+require(menu, "NSWindow *wnd = macosx_active_window();",
+        "Touch Bar must target the active AppKit window")
+require(menu, "[wnd setTouchBar:touchBar];",
+        "SDL2-shaped macOS builds must install Touch Bar through AppKit")
+require(menu, "[touchBar release];",
+        "manual-reference-counted direct Touch Bar install must balance ownership")
 require(menu, "[super touchesCancelledWithEvent:event];", "Touch Bar cancellation superclass dispatch")
 require(menu, "[alert release];", "manual NSAlert ownership cleanup")
+require(menu, "NSControlStateValueOn", "current AppKit menu on-state constant")
+require(menu, "NSControlStateValueOff", "current AppKit menu off-state constant")
+if "NSOnState" in menu or "NSOffState" in menu:
+    raise AssertionError("menu_macos.mm still uses legacy AppKit control state constants")
 require(menu, "bool macosx_clipboard_get(std::string &result)",
         "AppKit clipboard read implementation")
 require(menu, "bool macosx_clipboard_set(const std::string &value)",
@@ -270,6 +280,15 @@ if "#import" in macosx_host_header or "NSWindow" in macosx_host_header:
 for arc_source, label in ((native, "native_macos.mm"), (metal, "output_metal.mm")):
     if " release]" in arc_source or " autorelease]" in arc_source:
         raise AssertionError(f"ARC source contains manual Objective-C ownership: {label}")
+
+require(metal, "bool CMetal::Initialize(NSView *nsview, int w, int h)",
+        "Metal private API should use typed Objective-C++ view pointers")
+require(metal, "NSView *view = (__bridge NSView *)macosx_content_view();",
+        "ARC host boundary must use an explicit non-owning bridge")
+if "NSView *view = (NSView *)macosx_content_view();" in metal:
+    raise AssertionError("Metal host boundary uses an ARC-invalid plain C pointer cast")
+if "Initialize((__bridge void*)view" in metal or "Initialize((__bridge void *)view" in metal:
+    raise AssertionError("Metal private API unnecessarily round-trips NSView through void *")
 
 if "using namespace std;" in metal_header:
     raise AssertionError("Metal public header leaks the std namespace")
@@ -418,6 +437,14 @@ require(native, "bool macosx_native_set_fullscreen(const bool fullscreen)",
         "native AppKit fullscreen implementation")
 require(native, "void macosx_native_shutdown(void)",
         "native host shutdown implementation")
+require(native, "void activate_application()",
+        "AppKit activation compatibility helper")
+require(native, "if (@available(macOS 14.0, *))",
+        "new AppKit activation API availability guard")
+require(native, "[NSApp activate];",
+        "macOS 14+ cooperative AppKit activation")
+require(native, '# pragma clang diagnostic ignored "-Wdeprecated-declarations"',
+        "pre-macOS 14 activation fallback warning isolation")
 require(native, """void SDLCALL DOSBoxMac_Quit(void)
 {
     macosx_native_shutdown();
