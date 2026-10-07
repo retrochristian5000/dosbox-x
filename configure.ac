@@ -535,6 +535,7 @@ AC_ARG_ENABLE([native-macos],
 
 if test x"$enable_native_macos" = xyes; then
   enable_sdl2=no
+  enable_sdlnet=no
 fi
 
 dnl LIBRARY TEST: SDL 3.x
@@ -562,6 +563,12 @@ if test x"$enable_native_macos" = xyes; then
     dnl is detected or linked for this target.
     AC_DEFINE([C_NATIVE_MACOS], [1], [Define to 1 for the native macOS host backend])
     AC_DEFINE([C_SDL2], [1], [Define to 1 for SDL2-shaped compile-time host structures])
+    SDL2_CONFIG=no
+    SDL2_CFLAGS=""
+    SDL2_LIBS=""
+    SDL3_CONFIG=no
+    SDL3_CFLAGS=""
+    SDL3_LIBS=""
     native_macos_srcdir=`cd "$srcdir" 2>/dev/null && pwd -P`
     if test -z "$native_macos_srcdir"; then
       AC_MSG_ERROR([unable to resolve the source directory for native macOS])
