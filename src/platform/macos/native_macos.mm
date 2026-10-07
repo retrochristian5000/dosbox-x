@@ -91,6 +91,7 @@ SDL_Window *main_window = nullptr;
 bool text_input_enabled = true;
 bool relative_mouse = false;
 bool cursor_hidden = false;
+bool appkit_initialized = false;
 SDL_Keymod mod_state = KMOD_NONE;
 std::unordered_set<SDL_Surface *> owned_surfaces;
 
@@ -129,6 +130,29 @@ void activate_application()
 #if defined(__clang__)
 # pragma clang diagnostic pop
 #endif
+}
+
+bool initialize_appkit_application()
+{
+    @autoreleasepool {
+        NSApplication *application = [NSApplication sharedApplication];
+        if (!application) {
+            set_error("AppKit could not initialize NSApplication");
+            return false;
+        }
+
+        if ([application activationPolicy] == NSApplicationActivationPolicyProhibited &&
+            ![application setActivationPolicy:NSApplicationActivationPolicyRegular]) {
+            set_error("AppKit could not enable a regular application activation policy");
+            return false;
+        }
+
+        if (!appkit_initialized) {
+            [application finishLaunching];
+            appkit_initialized = true;
+        }
+    }
+    return true;
 }
 
 void push_event(const SDL_Event &event)
@@ -1208,16 +1232,17 @@ int SDLCALL DOSBoxMac_Init(Uint32 flags)
 
 int SDLCALL DOSBoxMac_InitSubSystem(Uint32 flags)
 {
-    @autoreleasepool {
-        if (flags & (SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-            [NSApplication sharedApplication];
-            if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited)
-                [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-            [NSApp finishLaunching];
-        }
-        if (flags & SDL_INIT_JOYSTICK)
-            refresh_hid_devices();
-    }
+    /*
+     * SDL subsystem bits are compatibility input only. Once decoded here,
+     * native host setup goes through AppKit/IOKit directly.
+     */
+    if ((flags & (SDL_INIT_VIDEO | SDL_INIT_EVENTS)) &&
+        !initialize_appkit_application())
+        return -1;
+
+    if (flags & SDL_INIT_JOYSTICK)
+        refresh_hid_devices();
+
     return 0;
 }
 
@@ -1323,7 +1348,7 @@ SDL_Window *SDLCALL DOSBoxMac_CreateWindow(const char *title, int x, int y,
                                             int w, int h, Uint32 flags)
 {
     @autoreleasepool {
-        if (DOSBoxMac_InitSubSystem(SDL_INIT_VIDEO) < 0)
+        if (!initialize_appkit_application())
             return nullptr;
 
         auto *window = new SDL_Window();
