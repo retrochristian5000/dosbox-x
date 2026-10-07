@@ -522,6 +522,12 @@ require(sdlmain_cpp, "SDL_GetWindowDisplayIndex(sdl.window)",
         "active display lookup must use the current window")
 require(menu, "#if defined(C_SDL2) && !(defined(C_NATIVE_MACOS) && C_NATIVE_MACOS)",
         "SDL headers in menu_macos must be legacy-backend-only")
+require(menu, "SDL_Window *window = GFX_GetSDLWindow();",
+        "SDL Cocoa bridge must validate the active SDL window")
+require(menu, "SDL_GetWindowWMInfo(window, &wminfo) == SDL_TRUE",
+        "SDL Cocoa bridge must require an explicit successful SysWM query")
+if "SDL_GetWindowWMInfo(GFX_GetSDLWindow(), &wminfo) >= 0" in menu:
+    raise AssertionError("SDL Cocoa bridge still treats SDL_FALSE as success")
 require(menu, 'NSScreen *screen = [wnd screen];',
         "macOS DPI helper must use AppKit's authoritative window screen")
 require(menu, 'CGDisplayModeGetPixelWidth(mode)',
