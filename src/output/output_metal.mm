@@ -40,7 +40,7 @@ public:
     CMetal();
     ~CMetal();
 
-    bool Initialize(void* nsview, int w, int h);
+    bool Initialize(NSView *nsview, int w, int h);
     void Shutdown();
 
     bool StartUpdate(uint8_t*& pixels, Bitu& pitch);
@@ -94,7 +94,7 @@ private:
 CMetal::CMetal() {}
 CMetal::~CMetal() { Shutdown(); }
 
-bool CMetal::Initialize(void* nsview, int w, int h)
+bool CMetal::Initialize(NSView *nsview, int w, int h)
 {
     /* ---------------------------------
      * 1. Metal Device
@@ -110,7 +110,7 @@ bool CMetal::Initialize(void* nsview, int w, int h)
         LOG_MSG("Metal: Failed to create command queue");
         return false;
     }
-    this->view = (__bridge NSView*)nsview;
+    this->view = nsview;
 
     /* ---------------------------------
     * 2. Create Metal Layer + SubView
@@ -490,7 +490,7 @@ void metal_init(void)
      * The macOS host layer owns the AppKit window/view lookup. Metal no longer
      * needs a window-manager compatibility structure in either backend.
      */
-    NSView *view = (NSView *)macosx_content_view();
+    NSView *view = (__bridge NSView *)macosx_content_view();
 
     if(!view) {
         LOG_MSG("METAL: Failed to get native NSView");
@@ -508,7 +508,7 @@ void metal_init(void)
 
     bool initialized = false;
     @autoreleasepool {
-        initialized = metal->Initialize((__bridge void*)view, w, h);
+        initialized = metal->Initialize(view, w, h);
     }
     if(!initialized) {
         LOG_MSG("METAL: Initialize failed");
