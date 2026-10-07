@@ -559,18 +559,30 @@ if "DOSBoxMac_InitSubSystem(SDL_INIT_EVENTS)" in native:
 require(native, "AppKit event delivery is a native host service initialized lazily",
         "native event subsystem must document its AppKit-owned lifecycle")
 
-joystick_init_occurrences = native.count("SDL_INIT_JOYSTICK")
-if joystick_init_occurrences != 2:
+if "SDL_INIT_JOYSTICK" in native:
     raise AssertionError(
-        "SDL_INIT_JOYSTICK must stay confined to compatibility init/quit decoding "
-        f"(found {joystick_init_occurrences} occurrences)"
+        "native_macos.mm must not gate IOKit HID on SDL_INIT_JOYSTICK"
     )
-require(native, """if ((flags & SDL_INIT_JOYSTICK) && !refresh_hid_devices())
-        return -1;""",
-        "SDL joystick compatibility init must dispatch to native IOKit HID")
-require(native, """if (flags & SDL_INIT_JOYSTICK)
-        shutdown_iokit_hid();""",
-        "SDL joystick compatibility quit must dispatch to native IOKit HID")
+require(native, "bool hid_devices_initialized = false;",
+        "native IOKit HID inventory initialization state")
+require(native, "bool ensure_hid_devices()",
+        "native IOKit HID lazy inventory helper")
+require(native, "return hid_devices_initialized || refresh_hid_devices();",
+        "native IOKit HID lazy inventory dispatch")
+require(native, """SDL_Joystick *SDLCALL DOSBoxMac_JoystickOpen(int device_index)
+{
+    if (!ensure_hid_devices())
+        return nullptr;""",
+        "joystick open must lazily initialize native IOKit HID")
+require(native, """const char *SDLCALL DOSBoxMac_JoystickNameForIndex(int device_index)
+{
+    if (!ensure_hid_devices())
+        return nullptr;""",
+        "joystick name lookup must lazily initialize native IOKit HID")
+require(native, "hid_devices_initialized = false;",
+        "native IOKit HID shutdown must invalidate inventory state")
+require(native, "IOKit HID are native host",
+        "native joystick subsystem must document its IOKit-owned lifecycle")
 require(native, "if (@available(macOS 14.0, *))",
         "new AppKit activation API availability guard")
 require(native, "[NSApp activate];",
