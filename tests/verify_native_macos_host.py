@@ -455,8 +455,9 @@ require(native, "void macosx_native_shutdown(void)",
 require(native, """void macosx_native_shutdown(void)
 {
     DOSBoxMac_CloseAudioDevice(1);
+    shutdown_appkit_events();
     shutdown_iokit_hid();""",
-        "native shutdown must tear down IOKit directly")
+        "native shutdown must tear down AppKit events and IOKit directly")
 if "DOSBoxMac_QuitSubSystem(SDL_INIT_JOYSTICK)" in native:
     raise AssertionError(
         "native shutdown still routes through SDL_INIT_JOYSTICK compatibility"
@@ -483,12 +484,53 @@ require(native, "if (!appkit_initialized)",
         "AppKit finishLaunching must be idempotent")
 require(native, "[application finishLaunching];",
         "native AppKit launch completion")
-require(native, """if (!initialize_appkit_application())
+require(native, """if (!initialize_appkit_events())
             return nullptr;""",
-        "native window creation must initialize AppKit directly")
+        "native window creation must initialize the AppKit event loop directly")
 if "DOSBoxMac_InitSubSystem(SDL_INIT_VIDEO)" in native:
     raise AssertionError(
         "native window creation still routes through SDL_INIT_VIDEO compatibility"
+    )
+
+require(native, "bool initialize_appkit_events()",
+        "native AppKit event-loop initializer")
+require(native, "void shutdown_appkit_events()",
+        "native AppKit event-loop shutdown")
+require(native, "[NSApp nextEventMatchingMask:NSEventMaskAny",
+        "native AppKit event retrieval")
+require(native, "[NSApp sendEvent:event];",
+        "native AppKit event dispatch")
+require(native, "[NSApp updateWindows];",
+        "native AppKit window event servicing")
+require(native, """if (!initialize_appkit_events())
+        return;""",
+        "native event pump must ensure AppKit event initialization")
+require(native, """int SDLCALL DOSBoxMac_PollEvent(SDL_Event *event)
+{
+    @autoreleasepool {
+        pump_appkit_once(false);
+    }""",
+        "SDL event compatibility polling must dispatch directly to AppKit")
+if "DOSBoxMac_PumpEvents();\n    return pop_event(event)" in native:
+    raise AssertionError(
+        "native PollEvent still bounces through the SDL-shaped pump wrapper"
+    )
+
+event_init_occurrences = native.count("SDL_INIT_EVENTS")
+if event_init_occurrences != 2:
+    raise AssertionError(
+        "SDL_INIT_EVENTS must stay confined to compatibility init/quit decoding "
+        f"(found {event_init_occurrences} occurrences)"
+    )
+require(native, """if ((flags & SDL_INIT_EVENTS) && !initialize_appkit_events())
+        return -1;""",
+        "SDL events compatibility init must dispatch to native AppKit")
+require(native, """if (flags & SDL_INIT_EVENTS)
+        shutdown_appkit_events();""",
+        "SDL events compatibility quit must dispatch to native AppKit")
+if "DOSBoxMac_InitSubSystem(SDL_INIT_EVENTS)" in native:
+    raise AssertionError(
+        "native event implementation still routes through SDL_INIT_EVENTS compatibility"
     )
 
 joystick_init_occurrences = native.count("SDL_INIT_JOYSTICK")
