@@ -11,6 +11,58 @@ config_file="$root/.dosbox-x-build.conf"
 
 fail() { printf 'build: %s\n' "$*" >&2; exit 2; }
 
+WHP_SOURCE_UPDATE=${WHP_SOURCE_UPDATE:-auto}
+WHP_SUBMODULES=${WHP_SUBMODULES:-auto}
+
+case "$WHP_SOURCE_UPDATE" in
+    auto|0|1) ;;
+    *) fail "WHP_SOURCE_UPDATE must be auto, 0, or 1" ;;
+esac
+case "$WHP_SUBMODULES" in
+    auto|0|1) ;;
+    *) fail "WHP_SUBMODULES must be auto, 0, or 1" ;;
+esac
+export WHP_SOURCE_UPDATE WHP_SUBMODULES
+
+source_update_skip=0
+if [ "$WHP_SOURCE_UPDATE" = auto ]; then
+    case "${1:-}" in
+        -h|--help|help|-l|--list|list|menuconfig|--menuconfig)
+            source_update_skip=1
+            ;;
+    esac
+    for update_arg in "$@"; do
+        case "$update_arg" in
+            -n|--dry-run|--show-config)
+                source_update_skip=1
+                ;;
+        esac
+    done
+    unset update_arg
+fi
+
+if [ "${WHP_SOURCE_UPDATE_DONE:-0}" != 1 ] &&
+   [ "$WHP_SOURCE_UPDATE" != 0 ] &&
+   [ "$source_update_skip" != 1 ]; then
+    source_revision_before=$(git -C "$root" rev-parse HEAD 2>/dev/null || true)
+    WHP_SOURCE_UPDATE="$WHP_SOURCE_UPDATE" \
+        /bin/sh "$root/scripts/update-source.sh" || exit $?
+    source_revision_after=$(git -C "$root" rev-parse HEAD 2>/dev/null || true)
+
+    WHP_SOURCE_UPDATE_DONE=1
+    export WHP_SOURCE_UPDATE_DONE
+
+    if [ -n "$source_revision_before" ] &&
+       [ -n "$source_revision_after" ] &&
+       [ "$source_revision_before" != "$source_revision_after" ]; then
+        printf 'DOSBox-X source update: re-entering updated build (%s -> %s)\n' \
+            "$source_revision_before" "$source_revision_after" >&2
+        exec "$root/build" "$@"
+    fi
+    unset source_revision_before source_revision_after
+fi
+unset source_update_skip
+
 help() {
     cat <<'EOF_HELP'
 Usage: ./build [options] [profile] [backend arguments...]
@@ -33,6 +85,12 @@ Options:
 
 Profiles: auto (default), unix, macos, mingw, emscripten,
 or an SDL2 build-* backend shown by --list.
+
+Environment:
+  WHP_SOURCE_UPDATE=auto|0|1
+                      Refresh the configured parent branch before a real build
+  WHP_SUBMODULES=auto|0|1
+                      Materialize only pinned submodules needed by the build
 
 Examples:
   ./build menuconfig
@@ -120,8 +178,16 @@ show_config() {
 }
 
 case "${1:-}" in
-    menuconfig|--menuconfig) exec bash "$root/menuconfig" ;;
-    llvm-bootstrap|--llvm-bootstrap) exec bash "$root/scripts/bootstrap-native-llvm.bash" ;;
+    menuconfig|--menuconfig)
+        exec bash "$root/menuconfig"
+        ;;
+    llvm-bootstrap|--llvm-bootstrap)
+        if [ "$WHP_SUBMODULES" != 0 ]; then
+            WHP_SUBMODULES="$WHP_SUBMODULES" \
+                /bin/sh "$root/scripts/update-submodules.sh" toolchains/llvm-project || exit $?
+        fi
+        exec bash "$root/scripts/bootstrap-native-llvm.bash"
+        ;;
 esac
 
 profile=auto
@@ -212,6 +278,21 @@ if [ "$dry" -eq 1 ]; then
     printf 'Command:'; printf ' %q' "$backend" "${args[@]}"; printf '\n'
     exit 0
 fi
+
+submodule_paths=()
+case "$backend" in
+    build-macos|build-macos-sdl2)
+        submodule_paths+=(vs/zlib)
+        ;;
+esac
+if [ "$compiler" = llvm ]; then
+    submodule_paths+=(toolchains/llvm-project)
+fi
+if [ "$WHP_SUBMODULES" != 0 ] && [ "${#submodule_paths[@]}" -gt 0 ]; then
+    WHP_SUBMODULES="$WHP_SUBMODULES" \
+        /bin/sh "$root/scripts/update-submodules.sh" "${submodule_paths[@]}" || exit $?
+fi
+unset submodule_paths
 
 if [ "$clean_build" -eq 1 ]; then
     export DOSBOX_CLEAN_BUILD=1
