@@ -530,10 +530,20 @@ require(native, "[application finishLaunching];",
 require(native, """if (!initialize_appkit_events())
             return nullptr;""",
         "native window creation must initialize the AppKit event loop directly")
-if "DOSBoxMac_InitSubSystem(SDL_INIT_VIDEO)" in native:
+if "SDL_INIT_VIDEO" in native:
     raise AssertionError(
-        "native window creation still routes through SDL_INIT_VIDEO compatibility"
+        "native_macos.mm must not gate AppKit video setup on SDL_INIT_VIDEO"
     )
+require(native, """int SDLCALL DOSBoxMac_InitSubSystem(Uint32)
+{
+    /*
+     * Native macOS host services initialize lazily through AppKit, CoreAudio,
+     * and IOKit operations. SDL subsystem flags are accepted only to preserve
+     * the transitional ABI and do not drive native host initialization.
+     */
+    return 0;
+}""",
+        "SDL subsystem compatibility entry point must not initialize native services")
 
 require(native, "bool initialize_appkit_events()",
         "native AppKit event-loop initializer")
