@@ -2,12 +2,13 @@
  * Native macOS host services for the SDL2-shaped DOSBox-X host ABI.
  *
  * This file intentionally uses AppKit, Core Audio/AudioUnit, IOKit HID,
- * pthreads, and libc directly.  The native macOS build pre-includes
- * native_macos_compat.h, so public SDL entry points used by old host-facing
- * code are renamed to DOSBoxMac_* at compile time.  No SDL library is linked.
+ * pthreads, and libc directly.  It explicitly includes native_macos_compat.h
+ * so the quarantined SDL declarations are remapped into typed DOSBoxMac_*
+ * declarations before implementation cross-calls are parsed.  No SDL library
+ * is linked.
  */
 
-#include "native_macos_sdl_abi.h"
+#include "native_macos_compat.h"
 #include "macosx_host.h"
 
 #import <AppKit/AppKit.h>
