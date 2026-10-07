@@ -732,23 +732,57 @@ bool is_controller(IOHIDDeviceRef device)
             usage == kHIDUsage_GD_MultiAxisController);
 }
 
-void refresh_hid_devices()
+bool initialize_iokit_hid()
+{
+    if (hid_manager)
+        return true;
+
+    IOHIDManagerRef manager =
+            IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    if (!manager) {
+        set_error("IOKit could not create an HID manager");
+        return false;
+    }
+
+    IOHIDManagerSetDeviceMatching(manager, nullptr);
+    const IOReturn result = IOHIDManagerOpen(manager, kIOHIDOptionsTypeNone);
+    if (result != kIOReturnSuccess) {
+        CFRelease(manager);
+        set_error("IOKit could not open the HID manager");
+        return false;
+    }
+
+    hid_manager = manager;
+    return true;
+}
+
+void shutdown_iokit_hid()
+{
+    for (auto device : hid_devices)
+        CFRelease(device);
+    hid_devices.clear();
+    hid_index_name.clear();
+
+    if (!hid_manager)
+        return;
+
+    IOHIDManagerClose(hid_manager, kIOHIDOptionsTypeNone);
+    CFRelease(hid_manager);
+    hid_manager = nullptr;
+}
+
+bool refresh_hid_devices()
 {
     for (auto device : hid_devices)
         CFRelease(device);
     hid_devices.clear();
 
-    if (!hid_manager) {
-        hid_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
-        if (!hid_manager)
-            return;
-        IOHIDManagerSetDeviceMatching(hid_manager, nullptr);
-        IOHIDManagerOpen(hid_manager, kIOHIDOptionsTypeNone);
-    }
+    if (!initialize_iokit_hid())
+        return false;
 
     CFSetRef devices = IOHIDManagerCopyDevices(hid_manager);
     if (!devices)
-        return;
+        return true;
 
     const CFIndex count = CFSetGetCount(devices);
     std::vector<const void *> values(static_cast<size_t>(count));
@@ -761,6 +795,7 @@ void refresh_hid_devices()
         }
     }
     CFRelease(devices);
+    return true;
 }
 
 std::string device_name(IOHIDDeviceRef device)
@@ -1240,22 +1275,16 @@ int SDLCALL DOSBoxMac_InitSubSystem(Uint32 flags)
         !initialize_appkit_application())
         return -1;
 
-    if (flags & SDL_INIT_JOYSTICK)
-        refresh_hid_devices();
+    if ((flags & SDL_INIT_JOYSTICK) && !refresh_hid_devices())
+        return -1;
 
     return 0;
 }
 
 void SDLCALL DOSBoxMac_QuitSubSystem(Uint32 flags)
 {
-    if ((flags & SDL_INIT_JOYSTICK) && hid_manager) {
-        for (auto device : hid_devices)
-            CFRelease(device);
-        hid_devices.clear();
-        IOHIDManagerClose(hid_manager, kIOHIDOptionsTypeNone);
-        CFRelease(hid_manager);
-        hid_manager = nullptr;
-    }
+    if (flags & SDL_INIT_JOYSTICK)
+        shutdown_iokit_hid();
 }
 
 void SDLCALL DOSBoxMac_Quit(void)
@@ -1268,7 +1297,7 @@ void SDLCALL DOSBoxMac_Quit(void)
 void macosx_native_shutdown(void)
 {
     DOSBoxMac_CloseAudioDevice(1);
-    DOSBoxMac_QuitSubSystem(SDL_INIT_JOYSTICK);
+    shutdown_iokit_hid();
     if (main_window)
         DOSBoxMac_DestroyWindow(main_window);
 }
@@ -2230,7 +2259,8 @@ void SDLCALL DOSBoxMac_UnlockAudioDevice(SDL_AudioDeviceID)
 
 int SDLCALL DOSBoxMac_NumJoysticks(void)
 {
-    refresh_hid_devices();
+    if (!refresh_hid_devices())
+        return 0;
     return static_cast<int>(hid_devices.size());
 }
 
