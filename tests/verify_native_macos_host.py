@@ -437,10 +437,31 @@ require(native, "bool macosx_native_set_fullscreen(const bool fullscreen)",
         "native AppKit fullscreen implementation")
 require(native, "void macosx_native_shutdown(void)",
         "native host shutdown implementation")
+require(native, """void macosx_native_shutdown(void)
+{
+    DOSBoxMac_CloseAudioDevice(1);
+    shutdown_iokit_hid();""",
+        "native shutdown must tear down IOKit directly")
+if "DOSBoxMac_QuitSubSystem(SDL_INIT_JOYSTICK)" in native:
+    raise AssertionError(
+        "native shutdown still routes through SDL_INIT_JOYSTICK compatibility"
+    )
 require(native, "void activate_application()",
         "AppKit activation compatibility helper")
 require(native, "bool initialize_appkit_application()",
         "native AppKit application initializer")
+require(native, "bool initialize_iokit_hid()",
+        "native IOKit HID initializer")
+require(native, "void shutdown_iokit_hid()",
+        "native IOKit HID shutdown")
+require(native, "IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone)",
+        "native IOKit HID manager construction")
+require(native, "const IOReturn result = IOHIDManagerOpen(manager, kIOHIDOptionsTypeNone);",
+        "native IOKit HID manager open result")
+require(native, "if (result != kIOReturnSuccess)",
+        "native IOKit HID open failure handling")
+require(native, "IOHIDManagerClose(hid_manager, kIOHIDOptionsTypeNone);",
+        "native IOKit HID manager shutdown")
 require(native, "NSApplication *application = [NSApplication sharedApplication];",
         "native AppKit application construction")
 require(native, "if (!appkit_initialized)",
@@ -454,6 +475,19 @@ if "DOSBoxMac_InitSubSystem(SDL_INIT_VIDEO)" in native:
     raise AssertionError(
         "native window creation still routes through SDL_INIT_VIDEO compatibility"
     )
+
+joystick_init_occurrences = native.count("SDL_INIT_JOYSTICK")
+if joystick_init_occurrences != 2:
+    raise AssertionError(
+        "SDL_INIT_JOYSTICK must stay confined to compatibility init/quit decoding "
+        f"(found {joystick_init_occurrences} occurrences)"
+    )
+require(native, """if ((flags & SDL_INIT_JOYSTICK) && !refresh_hid_devices())
+        return -1;""",
+        "SDL joystick compatibility init must dispatch to native IOKit HID")
+require(native, """if (flags & SDL_INIT_JOYSTICK)
+        shutdown_iokit_hid();""",
+        "SDL joystick compatibility quit must dispatch to native IOKit HID")
 require(native, "if (@available(macOS 14.0, *))",
         "new AppKit activation API availability guard")
 require(native, "[NSApp activate];",
