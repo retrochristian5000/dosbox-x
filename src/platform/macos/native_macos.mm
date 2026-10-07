@@ -1008,8 +1008,11 @@ int SDLCALL mem_close(SDL_RWops *rw)
 - (void)drawRect:(NSRect)dirtyRect
 {
     (void)dirtyRect;
-    SDL_Surface *surface = self.owner ? self.owner->surface : nullptr;
-    if (!surface || !surface->pixels || !surface->format || surface->format->BytesPerPixel != 4)
+
+    SDL_Window *owner = self.owner;
+    SDL_Surface *surface = owner ? owner->surface : nullptr;
+    if (!surface || !surface->pixels || !surface->format ||
+        surface->format->BytesPerPixel != 4)
         return;
 
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
@@ -1033,7 +1036,13 @@ int SDLCALL mem_close(SDL_RWops *rw)
     if (!image)
         return;
 
-    CGContextRef target = [[NSGraphicsContext currentContext] CGContext];
+    NSGraphicsContext *graphicsContext = [NSGraphicsContext currentContext];
+    CGContextRef target = graphicsContext ? [graphicsContext CGContext] : nullptr;
+    if (!target) {
+        CGImageRelease(image);
+        return;
+    }
+
     CGContextSaveGState(target);
     CGContextTranslateCTM(target, 0, self.bounds.size.height);
     CGContextScaleCTM(target, 1, -1);
