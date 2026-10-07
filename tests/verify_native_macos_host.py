@@ -246,6 +246,7 @@ for declaration in (
     "void macosx_GetWindowDPI(ScreenSizeInfo &info);",
     "bool macosx_clipboard_get(std::string &text);",
     "bool macosx_clipboard_set(const std::string &text);",
+    "void macosx_native_shutdown(void);",
     "void sdl_hax_macosx_setmenu(void *nsMenu);",
     "void menu_macosx_set_menuobj(DOSBoxMenu *new_altMenu);",
 ):
@@ -332,6 +333,18 @@ for source_name, source in (
     require(source, native_umbrella_guard,
             f"{source_name} must respect the native macOS SDL umbrella quarantine")
 
+require(support_cpp, '#include "macosx_host.h"',
+        "support fatal-exit path must consume the native macOS host API")
+require(support_cpp, """#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    macosx_native_shutdown();
+#else
+	SDL_Quit();
+#endif""",
+        "native fatal exit must bypass SDL_Quit")
+native_support = native_macos_view(support_cpp)
+if re.search(r"\bSDL_Quit\s*\(", native_support):
+    raise AssertionError("support.cpp native macOS fatal-exit path still calls SDL_Quit")
+
 if '#include "SDL_syswm.h"' in menu_cpp:
     raise AssertionError("menu.cpp still carries an unused SDL SysWM dependency")
 require(sdl_gui, """#if defined(_WIN32) && !defined(HX_DOS)
@@ -403,6 +416,12 @@ require(native, "bool macosx_native_set_window_size(const int width, const int h
         "native AppKit window-size setter implementation")
 require(native, "bool macosx_native_set_fullscreen(const bool fullscreen)",
         "native AppKit fullscreen implementation")
+require(native, "void macosx_native_shutdown(void)",
+        "native host shutdown implementation")
+require(native, """void SDLCALL DOSBoxMac_Quit(void)
+{
+    macosx_native_shutdown();
+}""", "SDL compatibility quit must delegate to native host shutdown")
 require(menu, "return (NSWindow *)macosx_native_window();",
         "native menu/DPI path must consume the AppKit window directly")
 require(menu, "void *macosx_content_view(void)",
