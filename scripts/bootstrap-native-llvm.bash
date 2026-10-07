@@ -50,7 +50,22 @@ expected_revision="$(git -C "$root" ls-tree HEAD -- "$submodule_path" | awk '{pr
     exit 1
 }
 
-git -C "$root" submodule update --init --depth 1 "$submodule_path" >&2
+submodule_mode="${WHP_SUBMODULES:-auto}"
+case "$submodule_mode" in
+    auto|0|1) ;;
+    *) printf 'error: WHP_SUBMODULES must be auto, 0, or 1\n' >&2; exit 2 ;;
+esac
+
+actual_revision="$(git -C "$source_dir" rev-parse HEAD 2>/dev/null || true)"
+if [ "$actual_revision" != "$expected_revision" ]; then
+    if [ "$submodule_mode" = 0 ]; then
+        printf 'error: LLVM submodule is not at the pinned gitlink and WHP_SUBMODULES=0\n' >&2
+        exit 1
+    fi
+    WHP_SUBMODULES="$submodule_mode" \
+        /bin/sh "$root/scripts/update-submodules.sh" "$submodule_path" >&2
+fi
+
 [ -f "$source_dir/llvm/CMakeLists.txt" ] && [ -f "$source_dir/clang/CMakeLists.txt" ] || {
     printf 'error: LLVM submodule is incomplete: %s\n' "$source_dir" >&2
     exit 1
