@@ -151,6 +151,25 @@ require(makefile, "-fobjc-arc", "native Objective-C++ ARC")
 require(gui_makefile, "-fno-objc-arc", "menu Objective-C++ manual-reference-counting mode")
 require(output_makefile, "-fobjc-arc", "Metal Objective-C++ ARC mode")
 require(native, 'error "native_macos.mm requires ARC"', "native ARC compile guard")
+require(native, "struct SDL_Window;",
+        "native AppKit classes must use the SDL_Window C++ forward declaration")
+require(native, "@interface DOSBoxMacSurfaceView : NSView",
+        "complete native surface-view declaration")
+require(native, "@interface DOSBoxMacWindowDelegate : NSObject <NSWindowDelegate>",
+        "complete native window-delegate declaration")
+if "@class DOSBoxMacSurfaceView;" in native or "@class DOSBoxMacWindowDelegate;" in native:
+    raise AssertionError(
+        "native_macos.mm still relies on Objective-C class forward declarations "
+        "for SDL_Window-owned AppKit objects"
+    )
+if native.index("@interface DOSBoxMacSurfaceView : NSView") > native.index("struct SDL_Window {"):
+    raise AssertionError("DOSBoxMacSurfaceView must be complete before SDL_Window stores it")
+if native.index("@interface DOSBoxMacWindowDelegate : NSObject <NSWindowDelegate>") > native.index("struct SDL_Window {"):
+    raise AssertionError("DOSBoxMacWindowDelegate must be complete before SDL_Window stores it")
+if native.count("@interface DOSBoxMacSurfaceView : NSView") != 1:
+    raise AssertionError("DOSBoxMacSurfaceView interface must have one canonical declaration")
+if native.count("@interface DOSBoxMacWindowDelegate : NSObject <NSWindowDelegate>") != 1:
+    raise AssertionError("DOSBoxMacWindowDelegate interface must have one canonical declaration")
 require(metal, 'error "output_metal.mm requires ARC"', "Metal ARC compile guard")
 require(metal, '#include "output_tools.h"',
         "Metal implementation must import shared output aspect declarations")
