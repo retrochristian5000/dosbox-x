@@ -116,6 +116,7 @@ struct AudioState {
 IOHIDManagerRef hid_manager = nullptr;
 std::vector<IOHIDDeviceRef> hid_devices;
 std::string hid_index_name;
+bool hid_devices_initialized = false;
 
 void set_error(const char *message)
 {
@@ -793,6 +794,7 @@ void shutdown_iokit_hid()
         CFRelease(device);
     hid_devices.clear();
     hid_index_name.clear();
+    hid_devices_initialized = false;
 
     if (!hid_manager)
         return;
@@ -812,8 +814,10 @@ bool refresh_hid_devices()
         return false;
 
     CFSetRef devices = IOHIDManagerCopyDevices(hid_manager);
-    if (!devices)
+    if (!devices) {
+        hid_devices_initialized = true;
         return true;
+    }
 
     const CFIndex count = CFSetGetCount(devices);
     std::vector<const void *> values(static_cast<size_t>(count));
@@ -826,7 +830,13 @@ bool refresh_hid_devices()
         }
     }
     CFRelease(devices);
+    hid_devices_initialized = true;
     return true;
+}
+
+bool ensure_hid_devices()
+{
+    return hid_devices_initialized || refresh_hid_devices();
 }
 
 std::string device_name(IOHIDDeviceRef device)
@@ -1300,23 +1310,18 @@ int SDLCALL DOSBoxMac_Init(Uint32 flags)
 int SDLCALL DOSBoxMac_InitSubSystem(Uint32 flags)
 {
     /*
-     * Video and joystick subsystem bits are compatibility input only.
-     * AppKit event delivery is a native host service initialized lazily by
-     * window creation and event pumping, so it has no SDL subsystem gate here.
+     * Video remains a compatibility request because legacy callers still use
+     * SDL_InitSubSystem for it. AppKit events and IOKit HID are native host
+     * services initialized lazily by the operations that consume them.
      */
     if ((flags & SDL_INIT_VIDEO) && !initialize_appkit_application())
-        return -1;
-
-    if ((flags & SDL_INIT_JOYSTICK) && !refresh_hid_devices())
         return -1;
 
     return 0;
 }
 
-void SDLCALL DOSBoxMac_QuitSubSystem(Uint32 flags)
+void SDLCALL DOSBoxMac_QuitSubSystem(Uint32)
 {
-    if (flags & SDL_INIT_JOYSTICK)
-        shutdown_iokit_hid();
 }
 
 void SDLCALL DOSBoxMac_Quit(void)
@@ -2301,6 +2306,8 @@ int SDLCALL DOSBoxMac_NumJoysticks(void)
 
 SDL_Joystick *SDLCALL DOSBoxMac_JoystickOpen(int device_index)
 {
+    if (!ensure_hid_devices())
+        return nullptr;
     if (device_index < 0 || device_index >= static_cast<int>(hid_devices.size()))
         return nullptr;
     auto *joystick = new SDL_Joystick();
@@ -2389,6 +2396,8 @@ const char *SDLCALL DOSBoxMac_JoystickName(SDL_Joystick *joystick)
 
 const char *SDLCALL DOSBoxMac_JoystickNameForIndex(int device_index)
 {
+    if (!ensure_hid_devices())
+        return nullptr;
     if (device_index < 0 || device_index >= static_cast<int>(hid_devices.size()))
         return nullptr;
     hid_index_name = device_name(hid_devices[static_cast<size_t>(device_index)]);
