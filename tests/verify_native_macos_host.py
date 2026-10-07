@@ -367,8 +367,19 @@ require(include_makefile, "native_macos_sdl_abi.h",
         "native ABI quarantine header must ship in source distributions")
 require(sdlmain_header, "#if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)",
         "sdlmain must skip the SDL umbrella under the native ABI quarantine")
+require(native, '#include "config.h"',
+        "native host implementation must load generated platform configuration")
 require(native, '#include "native_macos_compat.h"',
         "native host implementation must import remapped DOSBoxMac declarations")
+require(native, '#include "macosx_host.h"',
+        "native host implementation must import native host declarations")
+if native.index('#include "config.h"') > native.index('#include "macosx_host.h"'):
+    raise AssertionError(
+        "native_macos.mm must load config.h before macosx_host.h so "
+        "MACOSX/C_NATIVE_MACOS declarations are visible"
+    )
+require(macosx_host_header, "void macosx_native_shutdown(void);",
+        "native shutdown declaration must live in macosx_host.h")
 if '#include "native_macos_sdl_abi.h"' in native:
     raise AssertionError(
         "native_macos.mm bypasses the compatibility declaration layer and can "
