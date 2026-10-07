@@ -164,6 +164,8 @@ bool initialize_appkit_events()
     if (!initialize_appkit_application())
         return false;
 
+    mod_state = KMOD_NONE;
+    text_input_enabled = true;
     appkit_events_initialized = true;
     return true;
 }
