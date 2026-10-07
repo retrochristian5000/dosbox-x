@@ -8,8 +8,23 @@ instdir="$root/.build/zlib-host"
 
 if [ ! -f "$srcdir/zlib.h" ]; then
     if [ -d "$root/.git" ] || [ -f "$root/.git" ]; then
-        echo "Initializing pinned zlib submodule"
-        git -C "$root" submodule update --init --depth 1 -- vs/zlib
+        submodule_mode="${WHP_SUBMODULES:-auto}"
+        case "$submodule_mode" in
+            auto|1)
+                echo "Initializing pinned zlib submodule"
+                WHP_SUBMODULES="$submodule_mode" \
+                    /bin/sh "$root/scripts/update-submodules.sh" vs/zlib
+                ;;
+            0)
+                echo "zlib submodule is unavailable and WHP_SUBMODULES=0" >&2
+                exit 2
+                ;;
+            *)
+                echo "WHP_SUBMODULES must be auto, 0, or 1" >&2
+                exit 2
+                ;;
+        esac
+        unset submodule_mode
     fi
 fi
 
