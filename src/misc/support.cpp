@@ -35,6 +35,9 @@
 #include "support.h"
 #include "video.h"
 #include "menu.h"
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+#include "macosx_host.h"
+#endif
 #if !defined(DOSBOX_NATIVE_MACOS_SDL_ABI)
 #include "SDL.h"
 #endif
@@ -507,7 +510,11 @@ void E_Exit(const char * format,...) {
 	endwin();
 #endif
 	fprintf(stderr, "E_Exit: %s\n", buf);
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    macosx_native_shutdown();
+#else
 	SDL_Quit();
+#endif
 	if (sdl_wait_on_error()) {
 #if defined(WIN32)
         DOSBox_ConsolePauseWait();
