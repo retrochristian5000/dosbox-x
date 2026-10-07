@@ -439,6 +439,21 @@ require(native, "void macosx_native_shutdown(void)",
         "native host shutdown implementation")
 require(native, "void activate_application()",
         "AppKit activation compatibility helper")
+require(native, "bool initialize_appkit_application()",
+        "native AppKit application initializer")
+require(native, "NSApplication *application = [NSApplication sharedApplication];",
+        "native AppKit application construction")
+require(native, "if (!appkit_initialized)",
+        "AppKit finishLaunching must be idempotent")
+require(native, "[application finishLaunching];",
+        "native AppKit launch completion")
+require(native, """if (!initialize_appkit_application())
+            return nullptr;""",
+        "native window creation must initialize AppKit directly")
+if "DOSBoxMac_InitSubSystem(SDL_INIT_VIDEO)" in native:
+    raise AssertionError(
+        "native window creation still routes through SDL_INIT_VIDEO compatibility"
+    )
 require(native, "if (@available(macOS 14.0, *))",
         "new AppKit activation API availability guard")
 require(native, "[NSApp activate];",
