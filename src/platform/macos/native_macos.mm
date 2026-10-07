@@ -112,6 +112,25 @@ void set_error(const char *message)
     last_error = message ? message : "";
 }
 
+void activate_application()
+{
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= 140000
+    if (@available(macOS 14.0, *)) {
+        [NSApp activate];
+        return;
+    }
+#endif
+
+#if defined(__clang__)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+    [NSApp activateIgnoringOtherApps:YES];
+#if defined(__clang__)
+# pragma clang diagnostic pop
+#endif
+}
+
 void push_event(const SDL_Event &event)
 {
     std::lock_guard<std::mutex> lock(event_mutex);
@@ -1360,7 +1379,7 @@ SDL_Window *SDLCALL DOSBoxMac_CreateWindow(const char *title, int x, int y,
         [window->nswindow setReleasedWhenClosed:NO];
         [window->nswindow setTitle:title ? [NSString stringWithUTF8String:title] : @"DOSBox-X"];
         [window->nswindow makeKeyAndOrderFront:nil];
-        [NSApp activateIgnoringOtherApps:YES];
+        activate_application();
 
         main_window = window;
         if (flags & SDL_WINDOW_FULLSCREEN)
