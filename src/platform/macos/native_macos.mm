@@ -1308,16 +1308,13 @@ int SDLCALL DOSBoxMac_Init(Uint32 flags)
     return DOSBoxMac_InitSubSystem(flags);
 }
 
-int SDLCALL DOSBoxMac_InitSubSystem(Uint32 flags)
+int SDLCALL DOSBoxMac_InitSubSystem(Uint32)
 {
     /*
-     * Video remains a compatibility request because legacy callers still use
-     * SDL_InitSubSystem for it. AppKit events and IOKit HID are native host
-     * services initialized lazily by the operations that consume them.
+     * Native macOS host services initialize lazily through AppKit, CoreAudio,
+     * and IOKit operations. SDL subsystem flags are accepted only to preserve
+     * the transitional ABI and do not drive native host initialization.
      */
-    if ((flags & SDL_INIT_VIDEO) && !initialize_appkit_application())
-        return -1;
-
     return 0;
 }
 
