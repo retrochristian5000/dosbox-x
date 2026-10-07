@@ -22,20 +22,22 @@ def require(text, needle, label):
 
 
 def native_macos_view(text):
-    """Keep the C_NATIVE_MACOS side of simple preprocessor branches."""
+    """Keep branches that survive when the native macOS backend is active."""
     lines = text.splitlines()
     output = []
     i = 0
-    marker = "#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS"
+    native_marker = "#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS"
+    legacy_marker = "#if defined(C_SDL2) && !(defined(C_NATIVE_MACOS) && C_NATIVE_MACOS)"
     while i < len(lines):
-        if lines[i].strip() != marker:
+        stripped = lines[i].strip()
+        if stripped not in (native_marker, legacy_marker):
             output.append(lines[i])
             i += 1
             continue
 
         depth = 1
         native_lines = []
-        active = True
+        active = stripped == native_marker
         i += 1
         while i < len(lines) and depth:
             stripped = lines[i].strip()
@@ -48,13 +50,13 @@ def native_macos_view(text):
                 if depth and active:
                     native_lines.append(lines[i])
             elif stripped.startswith("#else") and depth == 1:
-                active = False
+                active = not active
             elif active:
                 native_lines.append(lines[i])
             i += 1
 
         if depth:
-            raise AssertionError("unterminated C_NATIVE_MACOS preprocessor branch")
+            raise AssertionError("unterminated native macOS preprocessor branch")
         output.extend(native_lines)
 
     return "\n".join(output)
