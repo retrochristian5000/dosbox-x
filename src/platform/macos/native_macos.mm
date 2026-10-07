@@ -1127,6 +1127,58 @@ void *macosx_native_window(void)
                : nullptr;
 }
 
+bool macosx_native_get_window_size(int &width, int &height)
+{
+    if (!main_window || !main_window->nswindow || !main_window->view)
+        return false;
+
+    const NSRect bounds = [main_window->view bounds];
+    width = static_cast<int>(std::lround(bounds.size.width));
+    height = static_cast<int>(std::lround(bounds.size.height));
+    return width > 0 && height > 0;
+}
+
+bool macosx_native_set_window_size(const int width, const int height)
+{
+    if (!main_window || !main_window->nswindow)
+        return false;
+
+    NSRect content =
+            [main_window->nswindow contentRectForFrameRect:[main_window->nswindow frame]];
+    const CGFloat top = NSMaxY(content);
+    content.size = NSMakeSize(std::max(width, 1), std::max(height, 1));
+    content.origin.y = top - content.size.height;
+    [main_window->nswindow
+            setFrame:[main_window->nswindow frameRectForContentRect:content]
+             display:YES];
+
+    if (main_window->surface &&
+        (main_window->surface->w != width || main_window->surface->h != height)) {
+        DOSBoxMac_FreeSurface(main_window->surface);
+        main_window->surface = nullptr;
+    }
+    return true;
+}
+
+bool macosx_native_set_fullscreen(const bool fullscreen)
+{
+    if (!main_window || !main_window->nswindow)
+        return false;
+
+    const bool is_fullscreen =
+            ([main_window->nswindow styleMask] & NSWindowStyleMaskFullScreen) != 0;
+    if (fullscreen != is_fullscreen && !main_window->fullscreen_transition) {
+        main_window->fullscreen_transition = true;
+        [main_window->nswindow toggleFullScreen:nil];
+    }
+
+    if (fullscreen)
+        main_window->flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+    else
+        main_window->flags &= ~(SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+    return true;
+}
+
 extern "C" {
 
 int SDLCALL DOSBoxMac_Init(Uint32 flags)
