@@ -17,6 +17,9 @@ void macosx_init_dock_menu(void);
 void macosx_GetWindowDPI(ScreenSizeInfo &info);
 void qz_set_match_monitor_cb(void);
 
+bool macosx_clipboard_get(std::string &text);
+bool macosx_clipboard_set(const std::string &text);
+
 /* AppKit objects remain opaque outside Objective-C++ translation units. */
 void *macosx_content_view(void);
 
