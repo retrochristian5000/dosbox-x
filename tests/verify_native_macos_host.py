@@ -170,6 +170,19 @@ if native.count("@interface DOSBoxMacSurfaceView : NSView") != 1:
     raise AssertionError("DOSBoxMacSurfaceView interface must have one canonical declaration")
 if native.count("@interface DOSBoxMacWindowDelegate : NSObject <NSWindowDelegate>") != 1:
     raise AssertionError("DOSBoxMacWindowDelegate interface must have one canonical declaration")
+require(native, "SDL_Window *owner = self.owner;",
+        "surface view must snapshot its non-owning SDL_Window owner")
+require(native, "NSGraphicsContext *graphicsContext = [NSGraphicsContext currentContext];",
+        "surface view must acquire the AppKit graphics context explicitly")
+require(native, "CGContextRef target = graphicsContext ? [graphicsContext CGContext] : nullptr;",
+        "surface view must guard the Core Graphics target")
+require(native, """if (!target) {
+        CGImageRelease(image);
+        return;
+    }""",
+        "surface view must release its image if no draw context exists")
+require(native, "window->view.owner = nullptr;",
+        "window teardown must clear the surface view's non-owning owner")
 require(metal, 'error "output_metal.mm requires ARC"', "Metal ARC compile guard")
 require(metal, '#include "output_tools.h"',
         "Metal implementation must import shared output aspect declarations")
