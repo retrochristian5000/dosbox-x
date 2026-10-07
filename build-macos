@@ -220,6 +220,17 @@ for arch in ${architectures}; do
     PKG_CONFIG_PATH="${orig_PKG_CONFIG_PATH}"
     export CFLAGS CXXFLAGS OBJCXXFLAGS CPPFLAGS LDFLAGS LIBS PKG_CONFIG_PATH
 
+    if [ "${macos_backend}" = "native" ]; then
+        case " ${LIBS} ${LDFLAGS} " in
+            *-lSDL*|*SDL2.framework*|*SDL3.framework*)
+                echo "Native macOS build refuses explicit SDL runtime link flags" >&2
+                exit 2
+                ;;
+        esac
+        unset SDL_CONFIG SDL2_CONFIG SDL2_CFLAGS SDL2_LIBS \
+              SDL3_CONFIG SDL3_CFLAGS SDL3_LIBS
+    fi
+
     printf '#include <sys/types.h>\nstatic off_t dosbox_x_off;\nint main(void) { return dosbox_x_off != 0; }\n' |
         "${CC:-cc}" ${CPPFLAGS} ${CFLAGS} -x c -fsyntax-only - || {
             echo "macOS SDK/compiler probe failed for ${arch}: $SDKROOT/usr/include/sys/types.h" >&2
@@ -297,7 +308,7 @@ for arch in ${architectures}; do
 
     configure_options=(--enable-debug=heavy --prefix=/usr)
     if [ "${macos_backend}" = "native" ]; then
-        configure_options+=(--enable-native-macos --disable-sdl2 --disable-sdlnet --disable-opengl)
+        configure_options+=(--enable-native-macos --disable-opengl)
     else
         configure_options+=(--enable-sdl2)
     fi
