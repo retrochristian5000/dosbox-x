@@ -67,6 +67,8 @@ def native_macos_view(text):
 build = read("build-macos")
 driver = read("build")
 legacy = read("build-macos-sdl2")
+legacy_sdl_deps = read("scripts/build-macos-legacy-sdl.bash")
+acinclude = read("acinclude.m4")
 sdk_resolver = read("scripts/resolve-macos-sdk.bash")
 llvm_bootstrap = read("scripts/bootstrap-native-llvm.bash")
 configure = read("configure.ac")
@@ -101,8 +103,28 @@ require(build, 'macos_backend="${DOSBOX_MACOS_BACKEND:-native}"',
         "build-macos must default to native")
 require(build, 'if [ "${macos_backend}" = "sdl2" ]; then',
         "SDL construction must be isolated behind the legacy backend")
-require(build, "--enable-native-macos --disable-sdl2 --disable-sdlnet --disable-opengl",
+require(build, 'source "$top/scripts/build-macos-legacy-sdl.bash" || exit 1',
+        "legacy SDL construction must live outside the native build body")
+require(legacy_sdl_deps, "Compiling the legacy in-tree SDL 2.x backend",
+        "isolated legacy SDL2 dependency build")
+require(legacy_sdl_deps, "Compiling the legacy in-tree SDL2_net backend",
+        "isolated legacy SDL2_net dependency build")
+for forbidden_inline_sdl_build in (
+    '(cd vs/sdl2 && ./build-dosbox.sh)',
+    '(cd vs/sdl2net && ./build-dosbox.sh)',
+):
+    if forbidden_inline_sdl_build in build:
+        raise AssertionError(
+            f"build-macos still contains inline SDL construction: {forbidden_inline_sdl_build}"
+        )
+require(build, "--enable-native-macos --disable-opengl",
         "native configure flags")
+if "--enable-native-macos --disable-sdl2" in build:
+    raise AssertionError("native build invocation still carries an SDL2 configure switch")
+require(build, "Native macOS build refuses explicit SDL runtime link flags",
+        "native build must reject caller-supplied SDL runtime link flags")
+require(build, "unset SDL_CONFIG SDL2_CONFIG SDL2_CFLAGS SDL2_LIBS",
+        "native build must clear inherited SDL discovery state")
 require(build, "otool -L src/dosbox-x", "native dylib dependency guard")
 require(build, "nm -u src/dosbox-x", "native unresolved-symbol guard")
 require(build, 'orig_OBJCXXFLAGS="${OBJCXXFLAGS:-}"',
@@ -143,6 +165,23 @@ for polluted in ('CFLAGS="${CFLAGS}${new}"', 'CXXFLAGS="${CXXFLAGS}${new}"'):
 require(legacy, "DOSBOX_MACOS_BACKEND=sdl2", "legacy SDL2 wrapper")
 
 require(configure, "--enable-native-macos", "configure switch")
+require(configure, """if test x"$enable_native_macos" = xyes; then
+  enable_sdl2=no
+  enable_sdlnet=no
+fi""",
+        "native configure mode must disable SDL runtime networking itself")
+require(configure, 'SDL2_CONFIG=no', "native configure SDL2 discovery reset")
+require(configure, 'SDL2_CFLAGS=""', "native configure SDL2 compile flags reset")
+require(configure, 'SDL2_LIBS=""', "native configure SDL2 link flags reset")
+require(configure, 'SDL3_CONFIG=no', "native configure SDL3 discovery reset")
+require(configure, 'SDL3_CFLAGS=""', "native configure SDL3 compile flags reset")
+require(configure, 'SDL3_LIBS=""', "native configure SDL3 link flags reset")
+require(acinclude,
+        "if test x$enable_native_macos != xyes && test x$enable_sdl2enable = xyes ; then",
+        "SDL2 discovery must be vetoed by native macOS mode")
+require(acinclude,
+        "if test x$enable_native_macos != xyes && test x$enable_sdl3enable = xyes ; then",
+        "SDL3 discovery must be vetoed by native macOS mode")
 require(configure, "AC_DEFINE([C_NATIVE_MACOS]", "native config define")
 require(configure, "AM_CONDITIONAL([NATIVE_MACOS]", "native automake conditional")
 require(configure, 'SDL_STRING="NativeMacOS"', "native SDL-network isolation")
