@@ -548,22 +548,16 @@ if "DOSBoxMac_PumpEvents();\n    return pop_event(event)" in native:
         "native PollEvent still bounces through the SDL-shaped pump wrapper"
     )
 
-event_init_occurrences = native.count("SDL_INIT_EVENTS")
-if event_init_occurrences != 2:
+if "SDL_INIT_EVENTS" in native:
     raise AssertionError(
-        "SDL_INIT_EVENTS must stay confined to compatibility init/quit decoding "
-        f"(found {event_init_occurrences} occurrences)"
+        "native_macos.mm must not gate AppKit event delivery on SDL_INIT_EVENTS"
     )
-require(native, """if ((flags & SDL_INIT_EVENTS) && !initialize_appkit_events())
-        return -1;""",
-        "SDL events compatibility init must dispatch to native AppKit")
-require(native, """if (flags & SDL_INIT_EVENTS)
-        shutdown_appkit_events();""",
-        "SDL events compatibility quit must dispatch to native AppKit")
 if "DOSBoxMac_InitSubSystem(SDL_INIT_EVENTS)" in native:
     raise AssertionError(
         "native event implementation still routes through SDL_INIT_EVENTS compatibility"
     )
+require(native, "AppKit event delivery is a native host service initialized lazily",
+        "native event subsystem must document its AppKit-owned lifecycle")
 
 joystick_init_occurrences = native.count("SDL_INIT_JOYSTICK")
 if joystick_init_occurrences != 2:
