@@ -41,8 +41,7 @@ extern bool morelen, showdbcs, selmark, clipboard_biospaste;
 extern int mouse_start_x, mouse_start_y, mouse_end_x, mouse_end_y, fx, fy, selsrow, selscol, selerow, selecol, mbutton;
 
 #ifdef MACOSX
-void GetClipboard(std::string* result);
-bool SetClipboard(std::string value);
+#include "macosx_host.h"
 #endif
 
 #if defined(WIN32)
@@ -571,19 +570,25 @@ typedef char host_cnv_char_t;
 char *CodePageHostToGuest(const host_cnv_char_t *s);
 void PasteClipboard(bool bPressed) {
 	if (!bPressed) return;
-    char *text;
-#if defined(C_SDL2)
-    text = SDL_GetClipboardText();
+
+    std::string text;
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    if (!macosx_clipboard_get(text))
+        return;
+#elif defined(C_SDL2)
+    char *sdl_text = SDL_GetClipboardText();
+    if (!sdl_text)
+        return;
+    text.assign(sdl_text);
+    SDL_free(sdl_text);
 #else
-    std::string clip="";
-    GetClipboard(&clip);
-    text = new char[clip.size()+1];
-    strcpy(text, clip.c_str());
+    if (!macosx_clipboard_get(text))
+        return;
 #endif
-    if (text==NULL) return;
+
     std::string result="", pre="";
     morelen=true;
-    for (unsigned int i=0; i<strlen(text); i++) {
+    for (size_t i=0; i<text.size(); i++) {
         if (swapad&&text[i]==0x0A&&(i==0||text[i-1]!=0x0D)) text[i]=0x0D;
         if (text[i]==9) result+="    ";
         else if (text[i]<0) {
@@ -595,8 +600,8 @@ void PasteClipboard(bool bPressed) {
             pre="";
             bool exit=false;
             for (int k=0; k<n; k++) {
-                if (n>2&&i>=strlen(text)) {exit=true;break;}
-                else if (i>=strlen(text)) {i++;break;}
+                if (n>2&&i>=text.size()) {exit=true;break;}
+                else if (i>=text.size()) {i++;break;}
                 if (text[i]>=0) {exit=true;break;}
                 pre+=std::string(1, text[i]);
                 i++;
@@ -611,7 +616,6 @@ void PasteClipboard(bool bPressed) {
         }
     }
     morelen=false;
-    delete text;
     strPasteBuffer.append(result.c_str());
 }
 #elif defined(LINUX) && C_X11
@@ -790,10 +794,12 @@ void CopyClipboard(int all) {
     baselen=0;
     bdlist={};
     if (result.size()&&result.back()==10) result.pop_back();
-#if defined(C_SDL2)
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    macosx_clipboard_set(result);
+#elif defined(C_SDL2)
     SDL_SetClipboardText(result.c_str());
 #else
-    SetClipboard(result);
+    macosx_clipboard_set(result);
 #endif
 }
 #endif
