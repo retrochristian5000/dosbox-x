@@ -21,6 +21,45 @@ def require(text, needle, label):
         raise AssertionError(f"{label}: missing {needle!r}")
 
 
+def native_macos_view(text):
+    """Keep the C_NATIVE_MACOS side of simple preprocessor branches."""
+    lines = text.splitlines()
+    output = []
+    i = 0
+    marker = "#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS"
+    while i < len(lines):
+        if lines[i].strip() != marker:
+            output.append(lines[i])
+            i += 1
+            continue
+
+        depth = 1
+        native_lines = []
+        active = True
+        i += 1
+        while i < len(lines) and depth:
+            stripped = lines[i].strip()
+            if stripped.startswith("#if") or stripped.startswith("#ifdef") or stripped.startswith("#ifndef"):
+                depth += 1
+                if active:
+                    native_lines.append(lines[i])
+            elif stripped.startswith("#endif"):
+                depth -= 1
+                if depth and active:
+                    native_lines.append(lines[i])
+            elif stripped.startswith("#else") and depth == 1:
+                active = False
+            elif active:
+                native_lines.append(lines[i])
+            i += 1
+
+        if depth:
+            raise AssertionError("unterminated C_NATIVE_MACOS preprocessor branch")
+        output.extend(native_lines)
+
+    return "\n".join(output)
+
+
 build = read("build-macos")
 driver = read("build")
 legacy = read("build-macos-sdl2")
@@ -335,14 +374,46 @@ require(macosx_host_header, "void *macosx_content_view(void);",
         "opaque macOS content-view accessor declaration")
 require(macosx_host_header, "void *macosx_native_window(void);",
         "native AppKit window accessor declaration")
+for declaration in (
+    "bool macosx_native_get_window_size(int &width, int &height);",
+    "bool macosx_native_set_window_size(int width, int height);",
+    "bool macosx_native_set_fullscreen(bool fullscreen);",
+):
+    require(macosx_host_header, declaration,
+            f"native AppKit window-control declaration for {declaration}")
 require(native, "void *macosx_native_window(void)",
         "native AppKit window accessor implementation")
+require(native, "bool macosx_native_get_window_size(int &width, int &height)",
+        "native AppKit window-size query implementation")
+require(native, "bool macosx_native_set_window_size(const int width, const int height)",
+        "native AppKit window-size setter implementation")
+require(native, "bool macosx_native_set_fullscreen(const bool fullscreen)",
+        "native AppKit fullscreen implementation")
 require(menu, "return (NSWindow *)macosx_native_window();",
         "native menu/DPI path must consume the AppKit window directly")
 require(menu, "void *macosx_content_view(void)",
         "shared opaque macOS content-view implementation")
 require(metal, "macosx_content_view()",
         "Metal must consume the host-owned AppKit content view")
+for marker in (
+    "macosx_native_get_window_size(width, height)",
+    "macosx_native_set_window_size(width, height)",
+    "macosx_native_set_fullscreen(fullscreen)",
+):
+    require(metal, marker, f"native Metal AppKit window control for {marker}")
+
+for source_name, source in (
+    ("output_metal.mm", metal),
+    ("menu_macos.mm", menu),
+):
+    native_source = native_macos_view(source)
+    stray_calls = sorted(set(re.findall(r"\b(SDL_[A-Za-z0-9_]+)\s*\(", native_source)))
+    if stray_calls:
+        raise AssertionError(
+            f"{source_name} native macOS branch still calls SDL APIs: "
+            + ", ".join(stray_calls)
+        )
+
 for source_name, source in (
     ("native_macos.mm", native),
     ("output_metal.mm", metal),
