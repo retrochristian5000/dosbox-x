@@ -140,17 +140,22 @@ extern int pause_menu_item_tag;
 
 char tempstr[4096];
 
-void GetClipboard(std::string* result) {
-    if (!result)
-        return;
-
+bool macosx_clipboard_get(std::string &result)
+{
     NSPasteboard *pb = [NSPasteboard generalPasteboard];
     NSString *text = [pb stringForType:NSPasteboardTypeString];
+    if (!text) {
+        result.clear();
+        return false;
+    }
+
     const char *utf8 = [text UTF8String];
-    result->assign(utf8 ? utf8 : "");
+    result.assign(utf8 ? utf8 : "");
+    return utf8 != nullptr;
 }
 
-bool SetClipboard(std::string value) {
+bool macosx_clipboard_set(const std::string &value)
+{
     NSPasteboard *pb = [NSPasteboard generalPasteboard];
     NSString *text = [NSString stringWithUTF8String:value.c_str()];
     if (!text)
