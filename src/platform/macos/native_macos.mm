@@ -93,6 +93,7 @@ bool text_input_enabled = true;
 bool relative_mouse = false;
 bool cursor_hidden = false;
 bool appkit_initialized = false;
+bool appkit_events_initialized = false;
 SDL_Keymod mod_state = KMOD_NONE;
 std::unordered_set<SDL_Surface *> owned_surfaces;
 
@@ -154,6 +155,26 @@ bool initialize_appkit_application()
         }
     }
     return true;
+}
+
+bool initialize_appkit_events()
+{
+    if (appkit_events_initialized)
+        return true;
+    if (!initialize_appkit_application())
+        return false;
+
+    appkit_events_initialized = true;
+    return true;
+}
+
+void shutdown_appkit_events()
+{
+    std::lock_guard<std::mutex> lock(event_mutex);
+    event_queue.clear();
+    mod_state = KMOD_NONE;
+    text_input_enabled = false;
+    appkit_events_initialized = false;
 }
 
 void push_event(const SDL_Event &event)
@@ -552,7 +573,7 @@ void translate_event(NSEvent *event)
 
 void pump_appkit_once(const bool wait)
 {
-    if (!NSApp)
+    if (!initialize_appkit_events())
         return;
 
     NSDate *until = wait ? [NSDate distantFuture] : [NSDate distantPast];
@@ -1272,8 +1293,10 @@ int SDLCALL DOSBoxMac_InitSubSystem(Uint32 flags)
      * SDL subsystem bits are compatibility input only. Once decoded here,
      * native host setup goes through AppKit/IOKit directly.
      */
-    if ((flags & (SDL_INIT_VIDEO | SDL_INIT_EVENTS)) &&
-        !initialize_appkit_application())
+    if ((flags & SDL_INIT_VIDEO) && !initialize_appkit_application())
+        return -1;
+
+    if ((flags & SDL_INIT_EVENTS) && !initialize_appkit_events())
         return -1;
 
     if ((flags & SDL_INIT_JOYSTICK) && !refresh_hid_devices())
@@ -1284,6 +1307,8 @@ int SDLCALL DOSBoxMac_InitSubSystem(Uint32 flags)
 
 void SDLCALL DOSBoxMac_QuitSubSystem(Uint32 flags)
 {
+    if (flags & SDL_INIT_EVENTS)
+        shutdown_appkit_events();
     if (flags & SDL_INIT_JOYSTICK)
         shutdown_iokit_hid();
 }
@@ -1298,6 +1323,7 @@ void SDLCALL DOSBoxMac_Quit(void)
 void macosx_native_shutdown(void)
 {
     DOSBoxMac_CloseAudioDevice(1);
+    shutdown_appkit_events();
     shutdown_iokit_hid();
     if (main_window)
         DOSBoxMac_DestroyWindow(main_window);
@@ -1378,7 +1404,7 @@ SDL_Window *SDLCALL DOSBoxMac_CreateWindow(const char *title, int x, int y,
                                             int w, int h, Uint32 flags)
 {
     @autoreleasepool {
-        if (!initialize_appkit_application())
+        if (!initialize_appkit_events())
             return nullptr;
 
         auto *window = new SDL_Window();
@@ -1766,7 +1792,9 @@ void SDLCALL DOSBoxMac_PumpEvents(void)
 
 int SDLCALL DOSBoxMac_PollEvent(SDL_Event *event)
 {
-    DOSBoxMac_PumpEvents();
+    @autoreleasepool {
+        pump_appkit_once(false);
+    }
     return pop_event(event) ? 1 : 0;
 }
 
