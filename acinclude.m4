@@ -7,7 +7,7 @@ AC_ARG_ENABLE(sdl3,     [  --enable-sdl3           Enable SDL 2.x],
   AH_TEMPLATE(C_SDL3,[Set to 1 to enable SDL 2.x support])
 
   SDL3_CONFIG=no
-  if test x$enable_sdl3enable = xyes ; then
+  if test x$enable_native_macos != xyes && test x$enable_sdl3enable = xyes ; then
     # TODO: Same override logic as SDL2 when SDL3 is in-tree
     manual_sdl3config=no
 
@@ -45,7 +45,7 @@ AC_ARG_ENABLE(sdl2,     [  --enable-sdl2           Enable SDL 2.x],
   AH_TEMPLATE(C_SDL2,[Set to 1 to enable SDL 2.x support])
 
   SDL2_CONFIG=no
-  if test x$enable_sdl2enable = xyes ; then
+  if test x$enable_native_macos != xyes && test x$enable_sdl2enable = xyes ; then
     if test x$sdl2_exec_prefix != x ; then
       sdl2_args="$sdl2_args --exec-prefix=$sdl2_exec_prefix"
       if test x${SDL2_CONFIG+set} != xset ; then
