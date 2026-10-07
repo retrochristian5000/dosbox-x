@@ -20,6 +20,9 @@
 #include "codepage.h"
 #include "dos_inc.h"
 #include "sdlmain.h"
+#ifdef MACOSX
+#include "macosx_host.h"
+#endif
 #include "keyboard.h"
 #include "render.h"
 #include "jfont.h"
@@ -39,10 +42,6 @@ extern const char *modifier;
 extern std::map<int, int> lowboxdrawmap;
 extern bool morelen, showdbcs, selmark, clipboard_biospaste;
 extern int mouse_start_x, mouse_start_y, mouse_end_x, mouse_end_y, fx, fy, selsrow, selscol, selerow, selecol, mbutton;
-
-#ifdef MACOSX
-#include "macosx_host.h"
-#endif
 
 #if defined(WIN32)
 bool Unicode2Ascii(const uint16_t* unicode) {
