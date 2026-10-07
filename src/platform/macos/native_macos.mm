@@ -1303,18 +1303,18 @@ bool macosx_native_set_fullscreen(const bool fullscreen)
 
 extern "C" {
 
-int SDLCALL DOSBoxMac_Init(Uint32 flags)
+int SDLCALL DOSBoxMac_Init(Uint32)
 {
-    return DOSBoxMac_InitSubSystem(flags);
+    /*
+     * Native macOS host services initialize lazily through AppKit, CoreAudio,
+     * and IOKit operations. SDL init entry points remain only as compatibility
+     * ABI symbols for long-lived host-facing code.
+     */
+    return 0;
 }
 
 int SDLCALL DOSBoxMac_InitSubSystem(Uint32)
 {
-    /*
-     * Native macOS host services initialize lazily through AppKit, CoreAudio,
-     * and IOKit operations. SDL subsystem flags are accepted only to preserve
-     * the transitional ABI and do not drive native host initialization.
-     */
     return 0;
 }
 
