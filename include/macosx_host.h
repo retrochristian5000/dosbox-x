@@ -22,6 +22,9 @@ void *macosx_content_view(void);
 
 #if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
 void *macosx_native_window(void);
+bool macosx_native_get_window_size(int &width, int &height);
+bool macosx_native_set_window_size(int width, int height);
+bool macosx_native_set_fullscreen(bool fullscreen);
 #endif
 
 std::string macosx_prompt_folder(const char *default_folder);
