@@ -285,15 +285,11 @@ static NSTouchBarItemIdentifier TouchBarCursorCaptureIdentifier = @"com.dosbox-x
 
 void macosx_reload_touchbar(void) {
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 101202/* touch bar interface appeared in 10.12.2+ according to Apple */
-    NSWindow *wnd = nil;
-
-# if !defined(C_SDL2)
-    wnd = sdl1_hax_get_window();
-# endif
-
-    if (wnd != nil) {
+    NSWindow *wnd = macosx_active_window();
+    if (wnd != nil)
         [wnd setTouchBar:nil];
-    }
+
+    macosx_init_touchbar();
 #endif
 }
 
@@ -356,9 +352,18 @@ NSTouchBar* macosx_on_make_touch_bar(NSWindow *wnd) {
 
 void macosx_init_touchbar(void) {
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 101202/* touch bar interface appeared in 10.12.2+ according to Apple */
-# if !defined(C_SDL2)
-    if (has_touch_bar_support)
-        sdl1_hax_make_touch_bar_set_callback(macosx_on_make_touch_bar);
+    if (!has_touch_bar_support)
+        return;
+
+# if defined(C_SDL2)
+    NSWindow *wnd = macosx_active_window();
+    if (wnd != nil) {
+        NSTouchBar *touchBar = macosx_on_make_touch_bar(wnd);
+        [wnd setTouchBar:touchBar];
+        [touchBar release];
+    }
+# else
+    sdl1_hax_make_touch_bar_set_callback(macosx_on_make_touch_bar);
 # endif
 #endif
 }
