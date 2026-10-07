@@ -159,3 +159,22 @@
  * DOSBoxMac_* entry points rather than SDL runtime symbols.
  */
 #include "native_macos_sdl_abi.h"
+
+/*
+ * SDL_Init/SDL_InitSubSystem/SDL_QuitSubSystem/SDL_Quit normally come from
+ * SDL.h, which the native host intentionally does not import. Declare the
+ * remapped compatibility entry points explicitly so Objective-C++ and other
+ * native translation units have stable prototypes without the SDL umbrella.
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern int SDLCALL DOSBoxMac_Init(Uint32 flags);
+extern int SDLCALL DOSBoxMac_InitSubSystem(Uint32 flags);
+extern void SDLCALL DOSBoxMac_QuitSubSystem(Uint32 flags);
+extern void SDLCALL DOSBoxMac_Quit(void);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
