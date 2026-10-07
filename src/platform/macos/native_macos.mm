@@ -8,6 +8,7 @@
  * is linked.
  */
 
+#include "config.h"
 #include "native_macos_compat.h"
 #include "macosx_host.h"
 
