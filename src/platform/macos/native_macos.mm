@@ -8,6 +8,7 @@
  */
 
 #include "native_macos_sdl_abi.h"
+#include "macosx_host.h"
 
 #import <AppKit/AppKit.h>
 #import <AudioUnit/AudioUnit.h>
@@ -1215,11 +1216,20 @@ void SDLCALL DOSBoxMac_QuitSubSystem(Uint32 flags)
 
 void SDLCALL DOSBoxMac_Quit(void)
 {
+    macosx_native_shutdown();
+}
+
+} // extern "C"
+
+void macosx_native_shutdown(void)
+{
     DOSBoxMac_CloseAudioDevice(1);
     DOSBoxMac_QuitSubSystem(SDL_INIT_JOYSTICK);
     if (main_window)
         DOSBoxMac_DestroyWindow(main_window);
 }
+
+extern "C" {
 
 const char *SDLCALL DOSBoxMac_GetError(void)
 {
