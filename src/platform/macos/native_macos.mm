@@ -1300,13 +1300,11 @@ int SDLCALL DOSBoxMac_Init(Uint32 flags)
 int SDLCALL DOSBoxMac_InitSubSystem(Uint32 flags)
 {
     /*
-     * SDL subsystem bits are compatibility input only. Once decoded here,
-     * native host setup goes through AppKit/IOKit directly.
+     * Video and joystick subsystem bits are compatibility input only.
+     * AppKit event delivery is a native host service initialized lazily by
+     * window creation and event pumping, so it has no SDL subsystem gate here.
      */
     if ((flags & SDL_INIT_VIDEO) && !initialize_appkit_application())
-        return -1;
-
-    if ((flags & SDL_INIT_EVENTS) && !initialize_appkit_events())
         return -1;
 
     if ((flags & SDL_INIT_JOYSTICK) && !refresh_hid_devices())
@@ -1317,8 +1315,6 @@ int SDLCALL DOSBoxMac_InitSubSystem(Uint32 flags)
 
 void SDLCALL DOSBoxMac_QuitSubSystem(Uint32 flags)
 {
-    if (flags & SDL_INIT_EVENTS)
-        shutdown_appkit_events();
     if (flags & SDL_INIT_JOYSTICK)
         shutdown_iokit_hid();
 }
