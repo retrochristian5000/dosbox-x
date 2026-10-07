@@ -49,9 +49,13 @@ static NSWindow *macosx_active_window(void)
 #if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
     return (NSWindow *)macosx_native_window();
 #elif defined(C_SDL2)
+    SDL_Window *window = GFX_GetSDLWindow();
+    if (!window)
+        return nil;
+
     SDL_SysWMinfo wminfo = {};
     SDL_VERSION(&wminfo.version);
-    if (SDL_GetWindowWMInfo(GFX_GetSDLWindow(), &wminfo) >= 0 &&
+    if (SDL_GetWindowWMInfo(window, &wminfo) == SDL_TRUE &&
         wminfo.subsystem == SDL_SYSWM_COCOA)
         return wminfo.info.cocoa.window;
     return nil;
