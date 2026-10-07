@@ -40,8 +40,15 @@
 #include <pthread.h>
 #include <unistd.h>
 
-@class DOSBoxMacSurfaceView;
-@class DOSBoxMacWindowDelegate;
+struct SDL_Window;
+
+@interface DOSBoxMacSurfaceView : NSView
+@property(nonatomic, assign) SDL_Window *owner;
+@end
+
+@interface DOSBoxMacWindowDelegate : NSObject <NSWindowDelegate>
+@property(nonatomic, assign) SDL_Window *owner;
+@end
 
 struct SDL_Window {
     __strong NSWindow *nswindow = nil;
@@ -992,10 +999,6 @@ int SDLCALL mem_close(SDL_RWops *rw)
 
 } // namespace
 
-@interface DOSBoxMacSurfaceView : NSView
-@property(nonatomic, assign) SDL_Window *owner;
-@end
-
 @implementation DOSBoxMacSurfaceView
 - (BOOL)isFlipped
 {
@@ -1038,10 +1041,6 @@ int SDLCALL mem_close(SDL_RWops *rw)
     CGContextRestoreGState(target);
     CGImageRelease(image);
 }
-@end
-
-@interface DOSBoxMacWindowDelegate : NSObject <NSWindowDelegate>
-@property(nonatomic, assign) SDL_Window *owner;
 @end
 
 @implementation DOSBoxMacWindowDelegate
