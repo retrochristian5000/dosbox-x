@@ -534,16 +534,34 @@ if "SDL_INIT_VIDEO" in native:
     raise AssertionError(
         "native_macos.mm must not gate AppKit video setup on SDL_INIT_VIDEO"
     )
-require(native, """int SDLCALL DOSBoxMac_InitSubSystem(Uint32)
+for declaration in (
+    "extern int SDLCALL DOSBoxMac_Init(Uint32 flags);",
+    "extern int SDLCALL DOSBoxMac_InitSubSystem(Uint32 flags);",
+    "extern void SDLCALL DOSBoxMac_QuitSubSystem(Uint32 flags);",
+    "extern void SDLCALL DOSBoxMac_Quit(void);",
+):
+    require(compat, declaration,
+            f"explicit native core compatibility declaration for {declaration}")
+
+require(native, """int SDLCALL DOSBoxMac_Init(Uint32)
 {
     /*
      * Native macOS host services initialize lazily through AppKit, CoreAudio,
-     * and IOKit operations. SDL subsystem flags are accepted only to preserve
-     * the transitional ABI and do not drive native host initialization.
+     * and IOKit operations. SDL init entry points remain only as compatibility
+     * ABI symbols for long-lived host-facing code.
      */
     return 0;
+}
+
+int SDLCALL DOSBoxMac_InitSubSystem(Uint32)
+{
+    return 0;
 }""",
-        "SDL subsystem compatibility entry point must not initialize native services")
+        "native core compatibility init entry points must remain independent no-ops")
+if "return DOSBoxMac_InitSubSystem(" in native:
+    raise AssertionError(
+        "DOSBoxMac_Init must not depend on a later DOSBoxMac_InitSubSystem definition"
+    )
 
 require(native, "bool initialize_appkit_events()",
         "native AppKit event-loop initializer")
