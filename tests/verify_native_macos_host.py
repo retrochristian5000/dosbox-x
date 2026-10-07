@@ -168,6 +168,12 @@ if "touchBar.delegate = [DOSBoxXTouchBarDelegate alloc];" in menu:
     raise AssertionError("Touch Bar weak delegate depends on a leaked allocation")
 require(menu, "[super touchesCancelledWithEvent:event];", "Touch Bar cancellation superclass dispatch")
 require(menu, "[alert release];", "manual NSAlert ownership cleanup")
+require(menu, "bool macosx_clipboard_get(std::string &result)",
+        "AppKit clipboard read implementation")
+require(menu, "bool macosx_clipboard_set(const std::string &value)",
+        "AppKit clipboard write implementation")
+require(menu, "[NSPasteboard generalPasteboard]",
+        "macOS clipboard must use NSPasteboard")
 
 for forbidden in ("CFBridgingRelease", "__bridge", "[panel release]"):
     if forbidden in menu:
@@ -238,6 +244,8 @@ for declaration in (
     "void macosx_init_touchbar(void);",
     "void macosx_reload_touchbar(void);",
     "void macosx_GetWindowDPI(ScreenSizeInfo &info);",
+    "bool macosx_clipboard_get(std::string &text);",
+    "bool macosx_clipboard_set(const std::string &text);",
     "void sdl_hax_macosx_setmenu(void *nsMenu);",
     "void menu_macosx_set_menuobj(DOSBoxMenu *new_altMenu);",
 ):
@@ -247,6 +255,8 @@ for declaration in (
 for stale, source, label in (
     ("extern bool has_touch_bar_support;", sdlmain_cpp, "sdlmain.cpp"),
     ("void macosx_reload_touchbar(void);", sdl_gui, "sdl_gui.cpp"),
+    ("void GetClipboard(std::string* result);", clipboard_cpp, "clipboard.cpp"),
+    ("bool SetClipboard(std::string value);", clipboard_cpp, "clipboard.cpp"),
     ("void sdl_hax_nsMenuAddApplicationMenu(void *nsMenu);", menu_cpp, "menu.cpp"),
     ("void sdl_hax_macosx_setmenu(void *nsMenu);", menu_cpp, "menu.cpp"),
 ):
@@ -434,6 +444,30 @@ for source_name, source in (
             )
 if "#define SDL_GetWindowWMInfo" in compat:
     raise AssertionError("native compatibility layer still remaps SDL_GetWindowWMInfo")
+
+for forbidden_clipboard_remap in (
+    "#define SDL_GetClipboardText",
+    "#define SDL_SetClipboardText",
+):
+    if forbidden_clipboard_remap in compat:
+        raise AssertionError(
+            f"native compatibility layer must not remap clipboard through SDL: "
+            f"{forbidden_clipboard_remap}"
+        )
+
+require(clipboard_cpp, '#include "macosx_host.h"',
+        "clipboard code must consume the macOS host API")
+require(clipboard_cpp, """#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    if (!macosx_clipboard_get(text))
+        return;
+#elif defined(C_SDL2)
+    char *sdl_text = SDL_GetClipboardText();""",
+        "native clipboard reads must take AppKit before the SDL2 compatibility branch")
+require(clipboard_cpp, """#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    macosx_clipboard_set(result);
+#elif defined(C_SDL2)
+    SDL_SetClipboardText(result.c_str());""",
+        "native clipboard writes must take AppKit before the SDL2 compatibility branch")
 require(sdlmain_cpp, "SDL_WINDOWEVENT_DISPLAY_CHANGED",
         "macOS display changes must refresh output geometry")
 require(sdlmain_cpp, "static int GFX_GetActiveDisplayIndex()",
