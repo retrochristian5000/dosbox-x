@@ -49,6 +49,8 @@ def native_macos_view(text):
                 depth -= 1
                 if depth and active:
                     native_lines.append(lines[i])
+            elif stripped.startswith("#elif") and depth == 1:
+                active = False
             elif stripped.startswith("#else") and depth == 1:
                 active = not active
             elif active:
