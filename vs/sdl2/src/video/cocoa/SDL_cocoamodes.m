@@ -300,6 +300,8 @@ static const char *Cocoa_GetFallbackDisplayName(CGDirectDisplayID displayID)
     return SDL_strdup(name);
 }
 
+/* Compile the deprecated bridge only for binaries supporting pre-10.15 macOS. */
+#if !defined(MAC_OS_X_VERSION_10_15) || MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_15
 /* Compatibility-only helper for macOS before 10.15.
  * CGDisplayIOServicePort is deprecated with no one-for-one replacement.
  * Keep it isolated until the older-OS lookup gets a separate shim. */
@@ -332,6 +334,7 @@ static const char *Cocoa_GetLegacyDisplayName(CGDirectDisplayID displayID)
     CFRelease(deviceInfo);
     return displayName ? displayName : Cocoa_GetFallbackDisplayName(displayID);
 }
+#endif
 
 static const char *Cocoa_GetDisplayName(CGDirectDisplayID displayID)
 {
@@ -348,7 +351,11 @@ static const char *Cocoa_GetDisplayName(CGDirectDisplayID displayID)
         return Cocoa_GetFallbackDisplayName(displayID);
     }
 #endif
+#if !defined(MAC_OS_X_VERSION_10_15) || MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_15
     return Cocoa_GetLegacyDisplayName(displayID);
+#else
+    return Cocoa_GetFallbackDisplayName(displayID);
+#endif
 }
 
 void Cocoa_InitModes(_THIS)
