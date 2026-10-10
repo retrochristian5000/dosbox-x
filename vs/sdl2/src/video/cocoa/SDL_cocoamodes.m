@@ -292,6 +292,47 @@ static SDL_bool GetDisplayMode(_THIS, CGDisplayModeRef vidmode, SDL_bool vidmode
     return SDL_TRUE;
 }
 
+/* Stable fallback for virtual displays or unavailable screen names. */
+static const char *Cocoa_GetFallbackDisplayName(CGDirectDisplayID displayID)
+{
+    char name[32];
+    SDL_snprintf(name, sizeof(name), "Display %u", (unsigned int)displayID);
+    return SDL_strdup(name);
+}
+
+/* Compatibility-only helper for macOS before 10.15.
+ * CGDisplayIOServicePort is deprecated with no one-for-one replacement.
+ * Keep it isolated until the older-OS lookup gets a separate shim. */
+static const char *Cocoa_GetLegacyDisplayName(CGDirectDisplayID displayID)
+{
+    io_service_t servicePort = CGDisplayIOServicePort(displayID);
+    CFDictionaryRef deviceInfo;
+    NSDictionary *localizedNames;
+    const char *displayName = NULL;
+
+    if (!servicePort) {
+        return Cocoa_GetFallbackDisplayName(displayID);
+    }
+
+    /* CGDisplayIOServicePort hands out a borrowed service reference. */
+    deviceInfo = IODisplayCreateInfoDictionary(servicePort, kIODisplayOnlyPreferredName);
+    if (!deviceInfo) {
+        return Cocoa_GetFallbackDisplayName(displayID);
+    }
+
+    localizedNames = [(__bridge NSDictionary *)deviceInfo objectForKey:
+                      [NSString stringWithUTF8String:kDisplayProductName]];
+    if ([localizedNames count] > 0) {
+        const char *name = [[localizedNames objectForKey:
+                             [[localizedNames allKeys] objectAtIndex:0]] UTF8String];
+        if (name && *name) {
+            displayName = SDL_strdup(name);
+        }
+    }
+    CFRelease(deviceInfo);
+    return displayName ? displayName : Cocoa_GetFallbackDisplayName(displayID);
+}
+
 static const char *Cocoa_GetDisplayName(CGDirectDisplayID displayID)
 {
 #if defined(MAC_OS_X_VERSION_10_15) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_15
@@ -299,24 +340,15 @@ static const char *Cocoa_GetDisplayName(CGDirectDisplayID displayID)
         NSScreen *screen = GetNSScreenForDisplayID(displayID);
         if (screen) {
             const char *name = [screen.localizedName UTF8String];
-            if (name) {
+            if (name && *name) {
                 return SDL_strdup(name);
             }
         }
+        /* Never fall back to the deprecated IOKit bridge on modern macOS. */
+        return Cocoa_GetFallbackDisplayName(displayID);
     }
 #endif
-
-    /* Compatibility fallback for macOS before 10.15. */
-    io_service_t servicePort = CGDisplayIOServicePort(displayID);
-    CFDictionaryRef deviceInfo = IODisplayCreateInfoDictionary(servicePort, kIODisplayOnlyPreferredName);
-    NSDictionary *localizedNames = [(__bridge NSDictionary *)deviceInfo objectForKey:[NSString stringWithUTF8String:kDisplayProductName]];
-    const char* displayName = NULL;
-
-    if ([localizedNames count] > 0) {
-        displayName = SDL_strdup([[localizedNames objectForKey:[[localizedNames allKeys] objectAtIndex:0]] UTF8String]);
-    }
-    CFRelease(deviceInfo);
-    return displayName;
+    return Cocoa_GetLegacyDisplayName(displayID);
 }
 
 void Cocoa_InitModes(_THIS)
