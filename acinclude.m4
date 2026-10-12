@@ -1,94 +1,86 @@
-dnl AM_PATH_SDL3([MINIMUM-VERSION])
-AC_DEFUN([AM_PATH_SDL3],
-[
-AC_ARG_ENABLE(sdl3,     [  --enable-sdl3           Enable SDL 2.x],
-		    enable_sdl3enable=$enableval, enable_sdl3enable=no)
-
-  AH_TEMPLATE(C_SDL3,[Set to 1 to enable SDL 2.x support])
-
-  SDL3_CONFIG=no
-  if test x$enable_native_macos != xyes && test x$enable_sdl3enable = xyes ; then
-    # TODO: Same override logic as SDL2 when SDL3 is in-tree
-    manual_sdl3config=no
-
-    AC_PATH_PROG(SDL3_CONFIG, sdl3-config, no)
-    AC_MSG_CHECKING(for SDL3)
-
-    # SDL3 does not provide a sdl3-config, must use pkg-config to find it
-    if test x$manual_sdl3config = xno && \
-        pkg-config --exists sdl3 ; then
+dnl SDL3 is discovered through pkg-config; it has no sdl3-config executable.
+dnl configure.ac owns the --enable-sdl3 option and its default.
+AC_DEFUN([AM_PATH_SDL3], [
+  AH_TEMPLATE([C_SDL3], [Define to 1 to enable SDL 3.x support])
+  SDL3_CFLAGS=
+  SDL3_LIBS=
+  AS_IF([test "x$enable_native_macos" != xyes && test "x$enable_sdl3" = xyes], [
+    AC_MSG_CHECKING([for SDL3 using pkg-config])
+    AS_IF([command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl3], [
       SDL3_CFLAGS=`pkg-config sdl3 --cflags`
       SDL3_LIBS=`pkg-config sdl3 --libs`
-      AC_DEFINE(C_SDL3,1)
-      AC_MSG_RESULT(found using pkg-config)
-    else
-      AC_MSG_RESULT(not found)
-    fi
-  fi
-
-  AC_SUBST(SDL3_CFLAGS)
-  AC_SUBST(SDL3_LIBS)
+      AC_DEFINE([C_SDL3], [1])
+      AC_MSG_RESULT([yes])
+    ], [
+      AC_MSG_RESULT([no])
+    ])
+  ])
+  AC_SUBST([SDL3_CFLAGS])
+  AC_SUBST([SDL3_LIBS])
 ])
 
-dnl AM_PATH_SDL2([MINIMUM-VERSION])
-AC_DEFUN([AM_PATH_SDL2],
-[
-AC_ARG_WITH(sdl2-prefix,[  --with-sdl2-prefix=PFX   Prefix where SDL2 is installed (optional)],
-            sdl2_prefix="$withval", sdl2_prefix="")
-AC_ARG_WITH(sdl2-exec-prefix,[  --with-sdl2-exec-prefix=PFX Exec prefix where SDL2 is installed (optional)],
-            sdl2_exec_prefix="$withval", sdl2_exec_prefix="")
-AC_ARG_ENABLE(sdl2test, [  --disable-sdl2test      Do not try to compile and run a test SDL program],
-		    enable_sdl2test=no, enable_sdl2test=yes)
-AC_ARG_ENABLE(sdl2,     [  --enable-sdl2           Enable SDL 2.x],
-		    enable_sdl2enable=$enableval, enable_sdl2enable=no)
+dnl configure.ac owns the --enable-sdl2 option and its default.
+dnl Prefer pinned SDL2, then an explicit SDL2_CONFIG/prefix, then pkg-config,
+dnl and finally a discovered sdl2-config executable.
+AC_DEFUN([AM_PATH_SDL2], [
+  AC_ARG_WITH([sdl2-prefix],
+    [AS_HELP_STRING([--with-sdl2-prefix=PFX], [prefix where SDL2 is installed])],
+    [sdl2_prefix=$withval], [sdl2_prefix=])
+  AC_ARG_WITH([sdl2-exec-prefix],
+    [AS_HELP_STRING([--with-sdl2-exec-prefix=PFX], [execution prefix where SDL2 is installed])],
+    [sdl2_exec_prefix=$withval], [sdl2_exec_prefix=])
+  dnl Retained for older callers; neither backend executes a runtime SDL2 test.
+  AC_ARG_ENABLE([sdl2test],
+    [AS_HELP_STRING([--disable-sdl2test], [legacy compatibility option (no runtime test)])])
 
-  AH_TEMPLATE(C_SDL2,[Set to 1 to enable SDL 2.x support])
+  AH_TEMPLATE([C_SDL2], [Define to 1 to enable SDL 2.x support])
+  SDL2_CFLAGS=
+  SDL2_LIBS=
 
-  SDL2_CONFIG=no
-  if test x$enable_native_macos != xyes && test x$enable_sdl2enable = xyes ; then
-    if test x$sdl2_exec_prefix != x ; then
-      sdl2_args="$sdl2_args --exec-prefix=$sdl2_exec_prefix"
-      if test x${SDL2_CONFIG+set} != xset ; then
-        SDL2_CONFIG=$sdl2_exec_prefix/bin/sdl2-config
-      fi
-    fi
-    if test x$sdl2_prefix != x ; then
-      sdl2_args="$sdl2_args --prefix=$sdl2_prefix"
-      if test x${SDL2_CONFIG+set} != xset ; then
-        SDL2_CONFIG=$sdl2_prefix/bin/sdl2-config
-      fi
-    fi
-
-    if test -x vs/sdl2/linux-host/bin/sdl2-config ; then
+  AS_IF([test "x$enable_native_macos" != xyes && test "x$enable_sdl2" = xyes], [
+    sdl2_config_args=
+    sdl2_explicit_config=no
+    AS_IF([test -x vs/sdl2/linux-host/bin/sdl2-config], [
       SDL2_CONFIG=vs/sdl2/linux-host/bin/sdl2-config
-      PATH=vs/sdl2/linux-host/bin:$PATH
-    fi
-
-    manual_sdl2config="$SDL2_CONFIG"
-
-    AC_PATH_PROG(SDL2_CONFIG, sdl2-config, no)
-    AC_MSG_CHECKING(for SDL2)
-
-    # Prefer pkg-config unless sdl2-config was
-    # manually specified before we looked for it
-    if test x$manual_sdl2config = xno && \
-        pkg-config --exists sdl2 ; then
+      sdl2_explicit_config=yes
+    ], [
+      AS_IF([test -n "$sdl2_exec_prefix"], [
+        SDL2_CONFIG="$sdl2_exec_prefix/bin/sdl2-config"
+        sdl2_config_args="$sdl2_config_args --exec-prefix=$sdl2_exec_prefix"
+        sdl2_explicit_config=yes
+      ])
+      AS_IF([test -n "$sdl2_prefix"], [
+        AS_IF([test "x$sdl2_explicit_config" != xyes],
+          [SDL2_CONFIG="$sdl2_prefix/bin/sdl2-config"])
+        sdl2_config_args="$sdl2_config_args --prefix=$sdl2_prefix"
+        sdl2_explicit_config=yes
+      ])
+      AS_IF([test -n "$SDL2_CONFIG"], [sdl2_explicit_config=yes])
+    ])
+    AC_PATH_PROG([SDL2_CONFIG], [sdl2-config], [no])
+    AC_MSG_CHECKING([for SDL2])
+    AS_IF([test "x$sdl2_explicit_config" != xyes &&
+           command -v pkg-config >/dev/null 2>&1 &&
+           pkg-config --exists sdl2], [
       SDL2_CFLAGS=`pkg-config sdl2 --cflags`
       SDL2_LIBS=`pkg-config sdl2 --libs`
-      AC_DEFINE(C_SDL2,1)
-      AC_MSG_RESULT(found using pkg-config)
-    elif test x$SDL2_CONFIG != xno; then
-      SDL2_CFLAGS=`$SDL2_CONFIG $sdl2conf_args --cflags`
-      SDL2_LIBS=`$SDL2_CONFIG $sdl2conf_args --libs`
-      AC_DEFINE(C_SDL2,1)
-      AC_MSG_RESULT(found using sdl2-config)
-    else
-      AC_MSG_RESULT(not found)
-    fi
-  fi
-
-  AC_SUBST(SDL2_CFLAGS)
-  AC_SUBST(SDL2_LIBS)
+      AC_DEFINE([C_SDL2], [1])
+      AC_MSG_RESULT([found using pkg-config])
+    ], [
+      AS_IF([test "x$SDL2_CONFIG" != xno &&
+             "$SDL2_CONFIG" $sdl2_config_args --cflags >/dev/null 2>&1 &&
+             "$SDL2_CONFIG" $sdl2_config_args --libs >/dev/null 2>&1], [
+        SDL2_CFLAGS=`"$SDL2_CONFIG" $sdl2_config_args --cflags`
+        SDL2_LIBS=`"$SDL2_CONFIG" $sdl2_config_args --libs`
+        AC_DEFINE([C_SDL2], [1])
+        AC_MSG_RESULT([found using sdl2-config])
+      ], [
+        AC_MSG_RESULT([not found])
+      ])
+    ])
+  ])
+  AC_SUBST([SDL2_CFLAGS])
+  AC_SUBST([SDL2_LIBS])
 ])
 
 dnl Configure Paths for Alsa
@@ -115,19 +107,18 @@ alsa_found=yes
 dnl
 dnl Get the cflags and libraries for alsa
 dnl
-AC_ARG_WITH(alsa-prefix,
-[  --with-alsa-prefix=PFX  Prefix where Alsa library is installed(optional)],
-[alsa_prefix="$withval"], [alsa_prefix=""])
+AC_ARG_WITH([alsa-prefix],
+  [AS_HELP_STRING([--with-alsa-prefix=PFX], [prefix where ALSA is installed])],
+  [alsa_prefix="$withval"], [alsa_prefix=""])
 
-AC_ARG_WITH(alsa-inc-prefix,
-[  --with-alsa-inc-prefix=PFX  Prefix where include libraries are (optional)],
-[alsa_inc_prefix="$withval"], [alsa_inc_prefix=""])
+AC_ARG_WITH([alsa-inc-prefix],
+  [AS_HELP_STRING([--with-alsa-inc-prefix=PFX], [ALSA include directory])],
+  [alsa_inc_prefix="$withval"], [alsa_inc_prefix=""])
 
 dnl FIXME: this is not yet implemented
-AC_ARG_ENABLE(alsatest,
-[  --disable-alsatest      Do not try to compile and run a test Alsa program],
-[enable_alsatest=no],
-[enable_alsatest=yes])
+AC_ARG_ENABLE([alsatest],
+  [AS_HELP_STRING([--disable-alsatest], [legacy compatibility option (no runtime test)])],
+  [enable_alsatest=$enableval], [enable_alsatest=yes])
 
 dnl Add any special include directories
 AC_MSG_CHECKING(for ALSA CFLAGS)
@@ -154,7 +145,7 @@ LIBS="$ALSA_LIBS $LIBS"
 AC_MSG_RESULT($ALSA_LIBS)
 
 dnl Check for a working version of libasound that is of the right version.
-min_alsa_version=ifelse([$1], ,0.1.1,$1)
+min_alsa_version=m4_if([$1], [], [0.1.1], [$1])
 AC_MSG_CHECKING(for libasound headers version >= $min_alsa_version)
 no_alsa=""
     alsa_min_major_version=`echo $min_alsa_version | \
@@ -191,25 +182,25 @@ AC_COMPILE_IFELSE(
   ]], [[]])],
   [AC_MSG_RESULT([found.])],
   [AC_MSG_RESULT([not present.])
-   ifelse([$3], , [AC_MSG_ERROR([Sufficiently new version of libasound not found.])])
+   m4_if([$3], [], [AC_MSG_ERROR([Sufficiently new version of libasound not found.])])
    alsa_found=no]
 )
 AC_LANG_POP([C])
 
 dnl Now that we know that we have the right version, let's see if we have the library and not just the headers.
 AC_CHECK_LIB([asound], [snd_ctl_open],,
-	[ifelse([$3], , [AC_MSG_ERROR(No linkable libasound was found.)])
+	[m4_if([$3], [], [AC_MSG_ERROR([No linkable libasound was found.])])
 	 alsa_found=no]
 )
 
 if test "x$alsa_found" = "xyes" ; then
-   ifelse([$2], , :, [$2])
+   m4_if([$2], [], [:], [$2])
    LIBS=`echo $LIBS | sed 's/-lasound//g'`
    LIBS=`echo $LIBS | sed 's/  //'`
    LIBS="-lasound $LIBS"
 fi
 if test "x$alsa_found" = "xno" ; then
-   ifelse([$3], , :, [$3])
+   m4_if([$3], [], [:], [$3])
    CFLAGS="$alsa_save_CFLAGS"
    LDFLAGS="$alsa_save_LDFLAGS"
    LIBS="$alsa_save_LIBS"

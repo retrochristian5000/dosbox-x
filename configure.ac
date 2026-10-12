@@ -1,5 +1,5 @@
 dnl Init.
-AC_PREREQ([2.60])
+AC_PREREQ([2.69])
 AC_INIT([dosbox-x], [2026.10.01],
         [https://github.com/joncampbell123/dosbox-x/issues], [],
         [https://dosbox-x.com])

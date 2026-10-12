@@ -76,4 +76,25 @@ for required in (
     if required not in CONFIGURE:
         raise AssertionError(f"Autoconf-native compiler flag probe is missing: {required}")
 
+# Keep SDL feature options in configure.ac, not duplicated in acinclude.m4.
+# A duplicate default used to silently disable SDL2 detection.
+require("AC_PREREQ([2.69])", "minimum supported Autoconf version")
+for flag in ("sdl2", "sdl3"):
+    require(f"AC_ARG_ENABLE([{flag}]", f"configure owns the {flag} option")
+    if f"AC_ARG_ENABLE({flag}," in ACINCLUDE or f"AC_ARG_ENABLE([{flag}]" in ACINCLUDE:
+        raise AssertionError(f"duplicate {flag} option default in acinclude.m4")
+for old in ("enable_sdl2enable", "enable_sdl3enable", "sdl2conf_args",
+            "sdl3-config", "ifelse("):
+    if old in ACINCLUDE:
+        raise AssertionError(f"retired SDL/ALSA Autoconf construct: {old}")
+for required in (
+    'test "x$enable_sdl2" = xyes',
+    'test "x$enable_sdl3" = xyes',
+    "AC_PATH_PROG([SDL2_CONFIG], [sdl2-config], [no])",
+    "AS_HELP_STRING([--with-alsa-prefix=PFX]",
+    "m4_if([$1], [], [0.1.1], [$1])",
+):
+    if required not in ACINCLUDE:
+        raise AssertionError(f"missing updated Autoconf macro: {required}")
+
 print("Autoconf policy: ok")
