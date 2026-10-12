@@ -325,6 +325,21 @@ due to requiring parallel Homebrew installations running natively *and* under Ro
   ```
   sudo port install autoconf automake nasm glfw glew fluidsynth libslirp libpcap pkgconfig libsdl2_net
   ```
+Homebrew lookup supports Apple Silicon (`/opt/homebrew`), Intel (`/usr/local`),
+the native `HOMEBREW_PREFIX`, and a native `brew` executable on `PATH`.
+Specify separate Homebrew installations for nonstandard/universal builds:
+
+```sh
+DOSBOX_HOMEBREW_ARM64_PREFIX=/custom/arm64 \
+DOSBOX_HOMEBREW_X86_64_PREFIX=/custom/x86_64 ./build macos --universal
+```
+
+Each override is a Homebrew installation prefix containing `bin/brew`, not
+an include directory. The macOS backend adds the chosen Homebrew `bin` early
+enough for Autotools, plus `include`, `lib`, and available pkg-config paths,
+while preserving user flags. Universal builds select separate dependency paths.
+The native backend remains SDL-free.
+
 * Compile natively for the host architecture. The first command is the SDL-free native macOS backend; the second is the explicit legacy SDL2 fallback.
   ```
   ./build-macos

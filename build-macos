@@ -51,6 +51,16 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 
+# Resolve native Homebrew tools before autogen.sh, including Autoconf/Automake.
+source "$top/scripts/resolve-macos-homebrew.bash"
+native_arch="$(uname -m)"
+orig_PATH="$PATH"
+dosbox_select_homebrew "$native_arch" "$native_arch" || exit 1
+if [ -n "$DOSBOX_BREW_PREFIX" ]; then
+    PATH="$DOSBOX_BREW_PREFIX/bin:$orig_PATH"
+    export PATH
+fi
+
 mkdir -p "$top/.build"
 
 hash_stream() {
@@ -188,26 +198,19 @@ package_config_digest() {
     fi
 }
 
-arm64_brew_cmd=""
-x86_64_brew_cmd=""
-if [ -x /opt/homebrew/bin/brew ]; then
-    arm64_brew_cmd="/opt/homebrew/bin/brew"
-fi
-if [ -x /usr/local/bin/brew ]; then
-    x86_64_brew_cmd="/usr/local/bin/brew"
-elif [ -x /usr/local/Homebrew/bin/brew ]; then
-    x86_64_brew_cmd="/usr/local/Homebrew/bin/brew"
-fi
-if [ -n "${x86_64_brew_cmd}" ] && [ "${universal}" -eq 1 ]; then
-    x86_64_brew_cmd="/usr/bin/arch -x86_64 ${x86_64_brew_cmd}"
-fi
-
 for arch in ${architectures}; do
-    declare brew_cmd="${arch}_brew_cmd"
-    if [ -n "${!brew_cmd}" ]; then
-        ${!brew_cmd} list fluid-synth &>/dev/null || ${!brew_cmd} install fluid-synth
-        ${!brew_cmd} list libslirp &>/dev/null || ${!brew_cmd} install libslirp
-        ${!brew_cmd} list pkg-config &>/dev/null || ${!brew_cmd} install pkg-config
+    # Universal builds must not inherit paths from the previous architecture.
+    PATH="$orig_PATH"
+    export PATH
+    dosbox_select_homebrew "$arch" "$native_arch" || exit 1
+    if [ -n "$DOSBOX_BREW_BINARY" ]; then
+        PATH="$DOSBOX_BREW_PREFIX/bin:$orig_PATH"
+        export PATH
+        echo "Using Homebrew for ${arch}: $DOSBOX_BREW_PREFIX"
+        for formula in fluid-synth libslirp pkg-config; do
+            dosbox_brew list --versions "$formula" >/dev/null 2>&1 ||
+                dosbox_brew install "$formula" || exit 1
+        done
     fi
 
     arch_flags="-arch ${arch} -mmacosx-version-min=10.13 "
@@ -292,18 +295,9 @@ for arch in ${architectures}; do
     INTERNAL_FREETYPE=1
     export CFLAGS LDFLAGS CPPFLAGS CXXFLAGS OBJCXXFLAGS INTERNAL_FREETYPE
 
-    if [ -n "${!brew_cmd}" ]; then
-        echo "Brew is installed, I'm going to use its libraries too"
-        new="-I$(${!brew_cmd} --prefix)/include "
-        nld="-L$(${!brew_cmd} --prefix)/lib "
-        LDFLAGS="${LDFLAGS}${nld}"
-        CPPFLAGS="${CPPFLAGS}${new}"
-        if [ -n "${PKG_CONFIG_PATH}" ]; then
-            PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(${!brew_cmd} --prefix)/lib/pkgconfig"
-        else
-            PKG_CONFIG_PATH="$(${!brew_cmd} --prefix)/lib/pkgconfig"
-        fi
-        export CFLAGS LDFLAGS CPPFLAGS CXXFLAGS OBJCXXFLAGS PKG_CONFIG_PATH
+    if [ -n "$DOSBOX_BREW_PREFIX" ]; then
+        # Preserve precedence of the in-tree zlib/libpng/FreeType dependencies.
+        dosbox_use_homebrew_paths
     fi
 
     configure_options=(--enable-debug=heavy --prefix=/usr)

@@ -32,6 +32,8 @@ on:
       - 'build-macos'
       - 'build-macos-sdl2'
       - 'scripts/resolve-macos-sdk.bash'
+      - 'scripts/resolve-macos-homebrew.bash'
+      - 'tests/verify_macos_homebrew_paths.sh'
       - 'scripts/bootstrap-native-llvm.bash'
       - '.github/workflows/native-graphics.yml'
   pull_request:
@@ -65,6 +67,8 @@ on:
       - 'build-macos'
       - 'build-macos-sdl2'
       - 'scripts/resolve-macos-sdk.bash'
+      - 'scripts/resolve-macos-homebrew.bash'
+      - 'tests/verify_macos_homebrew_paths.sh'
       - 'scripts/bootstrap-native-llvm.bash'
       - '.github/workflows/native-graphics.yml'
 permissions:
@@ -78,6 +82,8 @@ jobs:
         run: python3 tests/verify_native_graphics.py
       - name: Verify native macOS host boundary
         run: python3 tests/verify_native_macos_host.py
+      - name: Verify architecture-specific Homebrew prefixes
+        run: bash tests/verify_macos_homebrew_paths.sh
 
   macos-sdk:
     runs-on: macos-15
