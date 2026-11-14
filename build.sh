@@ -9,7 +9,7 @@ root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)" || exit 1
 cd "$root" || exit 1
 config_file="$root/.dosbox-x-build.conf"
 
-fail() { printf 'build: %s\n' "$*" >&2; exit 2; }
+fail() { printf 'build.sh: %s\n' "$*" >&2; exit 2; }
 
 WHP_SOURCE_UPDATE=${WHP_SOURCE_UPDATE:-auto}
 WHP_SUBMODULES=${WHP_SUBMODULES:-auto}
@@ -57,7 +57,7 @@ if [ "${WHP_SOURCE_UPDATE_DONE:-0}" != 1 ] &&
        [ "$source_revision_before" != "$source_revision_after" ]; then
         printf 'DOSBox-X source update: re-entering updated build (%s -> %s)\n' \
             "$source_revision_before" "$source_revision_after" >&2
-        exec "$root/build" "$@"
+        exec "$root/build.sh" "$@"
     fi
     unset source_revision_before source_revision_after
 fi
@@ -65,8 +65,8 @@ unset source_update_skip
 
 help() {
     cat <<'EOF_HELP'
-Usage: ./build [options] [profile] [backend arguments...]
-       ./build menuconfig
+Usage: ./build.sh [options] [profile] [backend arguments...]
+       ./build.sh menuconfig
 
 Options:
   -h, --help          Show this help
@@ -94,13 +94,13 @@ Environment:
                       Materialize only pinned submodules needed by the build
 
 Examples:
-  ./build menuconfig
-  ./build
-  ./build --llvm
-  ./build llvm-bootstrap
-  ./build macos --universal
-  ./build build-debug-g3
-  ./build mingw -- --disable-avcodec
+  ./build.sh menuconfig
+  ./build.sh
+  ./build.sh --llvm
+  ./build.sh llvm-bootstrap
+  ./build.sh macos --universal
+  ./build.sh build-debug-g3
+  ./build.sh mingw -- --disable-avcodec
 EOF_HELP
 }
 
@@ -153,7 +153,7 @@ load_config() {
             sdl)
                 case "$value" in
                     auto|2) : ;; # accepted for compatibility with older saved configs
-                    1) fail "SDL1 was retired; run ./build menuconfig and save a new configuration" ;;
+                    1) fail "SDL1 was retired; run ./build.sh menuconfig and save a new configuration" ;;
                     *) fail "invalid legacy SDL value in $config_file: $value" ;;
                 esac
                 ;;

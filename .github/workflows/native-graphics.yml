@@ -28,7 +28,8 @@ on:
       - 'Makefile.am'
       - 'src/Makefile.am'
       - 'configure.ac'
-      - 'build'
+      - 'build.sh'
+      - 'tests/verify_build_launcher.py'
       - 'build-macos'
       - 'menuconfig'
       - 'tests/verify_macos_sdl2_retirement.py'
@@ -39,6 +40,8 @@ on:
       - '.github/workflows/native-graphics.yml'
   pull_request:
     paths:
+      - 'build.sh'
+      - 'tests/verify_build_launcher.py'
       - 'src/output/**'
       - 'src/gui/sdlmain.cpp'
       - 'src/gui/sdl_gui.cpp'
@@ -80,6 +83,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Verify executable build launcher and renamed entry points
+        run: python3 tests/verify_build_launcher.py
       - name: Verify retired macOS SDL2 entry points
         run: python3 tests/verify_macos_sdl2_retirement.py
       - name: Verify native macOS host boundary

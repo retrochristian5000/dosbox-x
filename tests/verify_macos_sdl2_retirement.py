@@ -42,7 +42,7 @@ if "macOS SDL2 builds are retired" not in error:
 
 for retired in ("build-macos-sdl2", "build-macosold-sdl2"):
     error = check_rejected(
-        ["bash", "build", "--no-config", "--dry-run", "--profile", retired],
+        ["./build.sh", "--no-config", "--dry-run", "--profile", retired],
         f"universal launcher profile {retired}",
     )
     if "unknown profile" not in error:

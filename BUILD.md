@@ -12,18 +12,18 @@ For instructions on installing and using DOSBox-X, please look at the
 Universal build entry point
 ---------------------------
 
-This fork provides `./build` as a single front door for the existing platform-specific build scripts.
+This fork provides `./build.sh` as a single front door for the existing platform-specific build scripts.
 With no profile, it detects common Unix, macOS, and MinGW/MSYS hosts and dispatches to the matching backend.
 The specialized `build-*` scripts remain the source of their platform-specific compiler and configure logic.
 
 Useful commands:
 
 ```
-./build --list
-./build --dry-run
-./build
-./build macos universal
-./build build-debug-g3-sdl2
+./build.sh --list
+./build.sh --dry-run
+./build.sh
+./build.sh macos universal
+./build.sh build-debug-g3-sdl2
 ```
 
 Use `--profile NAME` (or an exact `build-*` filename) when host autodetection is not appropriate.
@@ -54,9 +54,9 @@ Pinned LLVM toolchain
 This fork carries the WHP LLVM fork as a pinned submodule at `toolchains/llvm-project`, matching the QEMU fork's toolchain layout.
 The gitlink is the revision authority; builds do not clone or float to the current LLVM branch tip.
 
-Run `./build llvm-bootstrap` to build the pinned native compiler explicitly, or pass `--llvm` to any supported Unix/macOS
+Run `./build.sh llvm-bootstrap` to build the pinned native compiler explicitly, or pass `--llvm` to any supported Unix/macOS
 build so the universal launcher bootstraps or reuses it automatically. Generated LLVM state lives under `.build/llvm-native`
-because the repository already uses `build` as the public launcher filename. The host compiler remains the default.
+separately from the executable `build.sh` launcher. The host compiler remains the default.
 
 The LLVM path exports Clang plus LLVM archive/binutils tools to the existing DOSBox-X backend. It does not force LLD as the
 platform linker, preserving the current macOS linker/ABI path while Mach-O and arm64e work continues.
@@ -64,13 +64,13 @@ platform linker, preserving the current macOS linker/ABI path while Mach-O and a
 Interactive build configuration
 -------------------------------
 
-Run `./build menuconfig` to choose a persistent build profile/backend, compiler toolchain, and the macOS universal-build setting.
+Run `./build.sh menuconfig` to choose a persistent build profile/backend, compiler toolchain, and the macOS universal-build setting.
 SDL2 remains required by the unfinished Linux/Windows cross-platform hosts, but it is retired as a macOS build backend. The `macos` profile exclusively uses the native AppKit/Core Audio/IOKit host; `DOSBOX_MACOS_BACKEND=sdl2` and the former SDL2 macOS launchers are rejected/removed.
 The menu previews the resolved backend before it saves, so unsupported combinations are rejected instead of becoming stale build state.
 
-The generated `.dosbox-x-build.conf` file is local working state and is ignored by Git. It contains data only; `./build`
+The generated `.dosbox-x-build.conf` file is local working state and is ignored by Git. It contains data only; `./build.sh`
 parses and validates the values rather than sourcing the file as shell code. Command-line options override the saved settings,
-and `./build --no-config` bypasses them completely.
+and `./build.sh --no-config` bypasses them completely.
 
 Native macOS graphics
 ---------------------
@@ -361,7 +361,7 @@ Specify separate Homebrew installations for nonstandard/universal builds:
 
 ```sh
 DOSBOX_HOMEBREW_ARM64_PREFIX=/custom/arm64 \
-DOSBOX_HOMEBREW_X86_64_PREFIX=/custom/x86_64 ./build macos --universal
+DOSBOX_HOMEBREW_X86_64_PREFIX=/custom/x86_64 ./build.sh macos --universal
 ```
 
 Each override is a Homebrew installation prefix containing `bin/brew`, not

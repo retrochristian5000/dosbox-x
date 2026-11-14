@@ -18,7 +18,7 @@ def require(text, needle, label):
 
 source = read("scripts/update-source.sh")
 submodules = read("scripts/update-submodules.sh")
-build = read("build")
+build = read("build.sh")
 llvm = read("scripts/bootstrap-native-llvm.bash")
 zlib = read("build-scripts/zlib/build-dosbox.sh")
 
@@ -67,7 +67,7 @@ require(build, '/bin/sh "$root/scripts/update-source.sh"',
         "build parent updater integration")
 require(build, 'WHP_SOURCE_UPDATE_DONE=1',
         "build source-update re-entry guard")
-require(build, 'exec "$root/build" "$@"',
+require(build, 'exec "$root/build.sh" "$@"',
         "build re-entry after parent fast-forward")
 require(build, 'submodule_paths+=(vs/zlib)',
         "macOS zlib pin selection")

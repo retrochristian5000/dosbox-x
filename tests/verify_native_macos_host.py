@@ -65,7 +65,7 @@ def native_macos_view(text):
 
 
 build = read("build-macos")
-driver = read("build")
+driver = read("build.sh")
 macos_workflow = read(".github/workflows/macos.yml")
 acinclude = read("acinclude.m4")
 sdk_resolver = read("scripts/resolve-macos-sdk.bash")
