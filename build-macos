@@ -225,7 +225,7 @@ for arch in ${architectures}; do
         PATH="$DOSBOX_BREW_PREFIX/bin:$orig_PATH"
         export PATH
         echo "Using Homebrew for ${arch}: $DOSBOX_BREW_PREFIX"
-        for formula in fluid-synth libslirp pkg-config; do
+        for formula in fluid-synth libslirp pkgconf; do
             dosbox_brew list --versions "$formula" >/dev/null 2>&1 ||
                 dosbox_brew install "$formula" || exit 1
         done
@@ -315,7 +315,7 @@ for arch in ${architectures}; do
 
     if [ -n "$DOSBOX_BREW_PREFIX" ]; then
         # Preserve precedence of the in-tree zlib/libpng/FreeType dependencies.
-        dosbox_use_homebrew_paths
+        dosbox_use_homebrew_paths || exit 1
     fi
 
     # Resolve the actual pkgconf/pkg-config host executable only after the

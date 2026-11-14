@@ -89,10 +89,10 @@ jobs:
         run: python3 tests/verify_macos_sdl2_retirement.py
       - name: Verify native macOS host boundary
         run: python3 tests/verify_native_macos_host.py
-      - name: Verify platform defaults, overrides, modes, and pixels
-        run: python3 tests/verify_native_graphics.py
       - name: Verify architecture-specific Homebrew prefixes
         run: bash tests/verify_macos_homebrew_paths.sh
+      - name: Verify platform defaults, overrides, modes, and pixels
+        run: python3 tests/verify_native_graphics.py
 
   macos-sdk:
     runs-on: macos-15

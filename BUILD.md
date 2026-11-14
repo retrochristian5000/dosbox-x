@@ -498,6 +498,19 @@ The native backend remains SDL-free.
   sudo port install autoconf automake nasm glfw glew fluidsynth libslirp libpcap pkgconfig libsdl2_net libpng zlib
   ./build-macosold
 ```
+The Homebrew resolver uses `brew --prefix --installed FORMULA` to find
+installed libslirp, FluidSynth, libpcap and versioned `ffmpeg@7` independently
+for each target architecture. It adds each available formula's `include`,
+`lib`, `lib/pkgconfig` and `share/pkgconfig` paths without globally linking
+keg-only software. `ffmpeg@7` package metadata takes priority over a newer
+FFmpeg linked into the main prefix; the existing caller `PKG_CONFIG_PATH`
+remains available. Missing optional formulae are not installed by the path
+resolver. The macOS build still installs its existing required Homebrew
+formulae, using the canonical `pkgconf` name. Set
+`DOSBOX_HOMEBREW_VERBOSE=1` to report selected formula prefixes by
+architecture. A formula prefix outside the selected Homebrew architecture
+is rejected rather than silently mixing toolchains.
+
 The previous `build-macosold-sdl2` launcher has also been retired; older macOS builds must not silently re-enable SDL2.
 
 ## To compile DOSBox-X for DOS with HX-DOS platform
