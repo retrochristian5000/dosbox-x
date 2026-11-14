@@ -84,7 +84,7 @@ for flag in ("sdl2", "sdl3"):
     if f"AC_ARG_ENABLE({flag}," in ACINCLUDE or f"AC_ARG_ENABLE([{flag}]" in ACINCLUDE:
         raise AssertionError(f"duplicate {flag} option default in acinclude.m4")
 for old in ("enable_sdl2enable", "enable_sdl3enable", "sdl2conf_args",
-            "sdl3-config", "ifelse("):
+            "AC_PATH_PROG([SDL3_CONFIG]", "ifelse("):
     if old in ACINCLUDE:
         raise AssertionError(f"retired SDL/ALSA Autoconf construct: {old}")
 for required in (
