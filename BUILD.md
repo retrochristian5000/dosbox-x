@@ -36,6 +36,37 @@ checks. Autoconf retains its own grep feature detection; the SDL-free
 linkage guards and other build paths are not silently rewritten.
 Run `python3 tests/verify_grep_seed.py` to test the seed and wiring.
 
+`seeds/pkgconf.sh` selects `pkgconf` or `pkg-config` (preferring
+`DOSBOX_PKGCONF`, then the standard `PKG_CONFIG` explicit override).
+It forwards regular `--cflags`, `--libs`, `--exists`, and `--modversion`
+requests to the selected executable. `--print-tool` validates the
+selection; `--check MODULE [MODULE ...]` reports available versions,
+missing modules, and the relevant `PKG_CONFIG_PATH`/`PKG_CONFIG_LIBDIR`
+metadata search paths. For example:
+
+```sh
+./seeds/pkgconf.sh --print-tool
+./seeds/pkgconf.sh --check slirp fluidsynth libavcodec
+./seeds/pkgconf.sh --cflags --libs freetype2
+```
+
+Set `DOSBOX_PKGCONF_VERBOSE=1` for tool-selection diagnostics on stderr.
+An unusable explicit tool fails rather than silently choosing something else.
+`build-macos` selects the tool separately for each architecture after
+Homebrew path resolution, exports it as `PKG_CONFIG` for Autoconf, and
+includes the tool and search-path inputs in its configuration cache key.
+Set `DOSBOX_PKGCONF_DIAGNOSE=1` on the macOS build to print a nonfatal
+optional-library report. Missing .pc metadata is not automatically proof
+that the headers or native library are absent. Regular builds are quiet
+apart from the selected tool path.
+
+The Autoconf source now uses its resolved `PKG_CONFIG` consistently
+instead of hardcoding the command `pkg-config`. Cross-compiled builds
+should explicitly provide the appropriate target-aware metadata tool
+and pkg-config search paths; a host executable alone does not establish
+target ABI compatibility. Run `python3 tests/verify_pkgconf_seed.py`
+for focused verification.
+
 Useful commands:
 
 ```

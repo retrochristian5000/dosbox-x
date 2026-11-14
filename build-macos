@@ -115,6 +115,8 @@ orig_CXXFLAGS="${CXXFLAGS:-}"
 orig_OBJCXXFLAGS="${OBJCXXFLAGS:-}"
 orig_LIBS="${LIBS:-}"
 orig_PKG_CONFIG_PATH="${PKG_CONFIG_PATH:-}"
+orig_PKG_CONFIG="${PKG_CONFIG-}"
+orig_PKG_CONFIG_set="${PKG_CONFIG+x}"
 
 active_config="$top/.build/macos-active-config.key"
 
@@ -209,9 +211,15 @@ package_config_digest() {
 }
 
 for arch in ${architectures}; do
-    # Universal builds must not inherit paths from the previous architecture.
+    # Universal builds must not inherit tools or paths from the prior arch.
     PATH="$orig_PATH"
     export PATH
+    if [ -n "$orig_PKG_CONFIG_set" ]; then
+        PKG_CONFIG="$orig_PKG_CONFIG"
+        export PKG_CONFIG
+    else
+        unset PKG_CONFIG
+    fi
     dosbox_select_homebrew "$arch" "$native_arch" || exit 1
     if [ -n "$DOSBOX_BREW_BINARY" ]; then
         PATH="$DOSBOX_BREW_PREFIX/bin:$orig_PATH"
@@ -310,6 +318,28 @@ for arch in ${architectures}; do
         dosbox_use_homebrew_paths
     fi
 
+    # Resolve the actual pkgconf/pkg-config host executable only after the
+    # architecture-specific PATH and .pc paths have been finalized.
+    pkgconf_tool="$("$top/seeds/pkgconf.sh" --print-tool)" || {
+        printf 'Cannot select a working pkgconf/pkg-config for %s\n' "$arch" >&2
+        exit 1
+    }
+    PKG_CONFIG="$pkgconf_tool"
+    export PKG_CONFIG
+    printf 'Configuration pkg-config for %s: %s\n' "$arch" "$PKG_CONFIG"
+    case "${DOSBOX_PKGCONF_DIAGNOSE:-0}" in
+        0) ;;
+        1)
+            "$top/seeds/pkgconf.sh" --check slirp fluidsynth \
+                libavcodec libavformat libavutil libswscale libswresample ||
+                printf '%s\n' 'Some optional pkg-config modules are missing; see diagnostics above' >&2
+            ;;
+        *)
+            printf '%s\n' 'DOSBOX_PKGCONF_DIAGNOSE must be 0 or 1' >&2
+            exit 2
+            ;;
+    esac
+
     configure_options=(--enable-debug=heavy --prefix=/usr --enable-native-macos --disable-opengl)
     if [ "${universal}" -eq 1 ]; then
         configure_options+=(--enable-universal)
@@ -330,7 +360,11 @@ for arch in ${architectures}; do
         printf 'objcxxflags=%s\n' "$OBJCXXFLAGS"
         printf 'ldflags=%s\n' "$LDFLAGS"
         printf 'libs=%s\n' "$LIBS"
+        printf 'pkg_config=%s\n' "$PKG_CONFIG"
+        printf 'pkg_config_version=%s\n' "$("$PKG_CONFIG" --version)"
         printf 'pkg_config_path=%s\n' "$PKG_CONFIG_PATH"
+        printf 'pkg_config_libdir=%s\n' "${PKG_CONFIG_LIBDIR-}"
+        printf 'pkg_config_sysroot=%s\n' "${PKG_CONFIG_SYSROOT_DIR-}"
         printf 'config_package=%s\n' "$(package_config_digest)"
         for option in "${configure_options[@]}"; do
             printf 'configure=%q\n' "$option"

@@ -5,12 +5,18 @@ on:
     paths:
       - 'seeds/**'
       - 'tests/verify_grep_seed.py'
+      - 'tests/verify_pkgconf_seed.py'
+      - 'configure.ac'
+      - 'acinclude.m4'
       - 'build-macos'
       - '.github/workflows/host-tool-seeds.yml'
   pull_request:
     paths:
       - 'seeds/**'
       - 'tests/verify_grep_seed.py'
+      - 'tests/verify_pkgconf_seed.py'
+      - 'configure.ac'
+      - 'acinclude.m4'
       - 'build-macos'
       - '.github/workflows/host-tool-seeds.yml'
   workflow_dispatch:
@@ -25,3 +31,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Check host grep resolution, POSIX semantics and macOS wiring
         run: python3 tests/verify_grep_seed.py
+      - name: Check pkgconf discovery, missing-package diagnostics and Autotools wiring
+        run: python3 tests/verify_pkgconf_seed.py

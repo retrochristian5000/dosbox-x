@@ -108,4 +108,11 @@ for explicit in ('test -z "$SDL2_CONFIG"', 'test -z "$sdl2_exec_prefix"',
     if explicit not in ACINCLUDE:
         raise AssertionError(f"pinned SDL2 discovery overrides explicit selection: {explicit}")
 
+require("AC_PATH_PROGS([PKG_CONFIG], [pkgconf pkg-config], [no])",
+        "pkgconf/pkg-config host tool discovery")
+require("dosbox_pkgconf_exists()",
+        "shared pkg-config feature check helper")
+if "pkg-config --exists" in CONFIGURE or "pkg-config --exists" in ACINCLUDE:
+    raise AssertionError("bare pkg-config calls bypass selected PKG_CONFIG")
+
 print("Autoconf policy: ok")

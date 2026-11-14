@@ -80,6 +80,17 @@ dnl Detect the canonical host and target build environment
 AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
 
+dnl Use the same pkgconf/pkg-config executable throughout configure,
+dnl including SDL probes expanded from acinclude.m4.
+AC_ARG_VAR([PKG_CONFIG], [pkgconf/pkg-config compatible host executable])
+AC_PATH_PROGS([PKG_CONFIG], [pkgconf pkg-config], [no])
+if test "x$PKG_CONFIG" != xno && ! "$PKG_CONFIG" --version >/dev/null 2>&1; then
+  AC_MSG_ERROR([PKG_CONFIG is not a usable pkgconf/pkg-config executable: $PKG_CONFIG])
+fi
+dosbox_pkgconf_exists() {
+  test "x$PKG_CONFIG" != xno && "$PKG_CONFIG" --exists "$@"
+}
+
 MACOSX_DEPLOYMENT_TARGET="10.15"
 MACOSX_ARCH="ARM"
 MACOSX_CPU="unknown"
@@ -639,12 +650,12 @@ case "$host" in
        AC_DEFINE(C_OPENGL,1)
        ;;
     *)
-       pkg-config --exists gl; RES=$?
+       dosbox_pkgconf_exists gl; RES=$?
        if test x$RES = x0; then
          AC_MSG_RESULT(yes)
-         CFLAGS="$CFLAGS "`pkg-config gl --cflags`
-         CPPFLAGS="$CPPFLAGS "`pkg-config gl --cflags`
-         LIBS="$LIBS "`pkg-config gl --libs`
+         CFLAGS="$CFLAGS "`"$PKG_CONFIG" gl --cflags`
+         CPPFLAGS="$CPPFLAGS "`"$PKG_CONFIG" gl --cflags`
+         LIBS="$LIBS "`"$PKG_CONFIG" gl --libs`
          AC_DEFINE(C_OPENGL,1)
        elif test x$have_gl_h = xyes -a x$have_gl_lib = xyes ; then
          AC_MSG_RESULT(yes)
@@ -1001,11 +1012,11 @@ if test x$enable_freetype = xyes; then
     AC_DEFINE(C_FREETYPE,1)
     AC_MSG_RESULT(yes)
   else
-    pkg-config --exists freetype2; RES=$?
+    dosbox_pkgconf_exists freetype2; RES=$?
     if test x$RES = x0; then
-      CFLAGS="$CFLAGS "`pkg-config freetype2 --cflags`
-      CPPFLAGS="$CPPFLAGS "`pkg-config freetype2 --cflags`
-      LIBS="$LIBS "`pkg-config freetype2 --libs`
+      CFLAGS="$CFLAGS "`"$PKG_CONFIG" freetype2 --cflags`
+      CPPFLAGS="$CPPFLAGS "`"$PKG_CONFIG" freetype2 --cflags`
+      LIBS="$LIBS "`"$PKG_CONFIG" freetype2 --libs`
       AC_DEFINE(C_FREETYPE,1)
       AC_MSG_RESULT(yes)
     else
@@ -1316,9 +1327,9 @@ if test x$enable_libslirp = xyes ; then
   if test x$have_slirp_lib = xyes -a x$have_slirp_h = xyes ; then
     have_slirp=yes
     AC_DEFINE(C_SLIRP,1)
-    LIBS="$LIBS "`pkg-config slirp --libs`
-    CFLAGS="$CFLAGS -DLIBSLIRP_STATIC "`pkg-config slirp --cflags`
-    CPPFLAGS="$CPPFLAGS -DLIBSLIRP_STATIC "`pkg-config slirp --cflags`
+    LIBS="$LIBS "`"$PKG_CONFIG" slirp --libs`
+    CFLAGS="$CFLAGS -DLIBSLIRP_STATIC "`"$PKG_CONFIG" slirp --cflags`
+    CPPFLAGS="$CPPFLAGS -DLIBSLIRP_STATIC "`"$PKG_CONFIG" slirp --cflags`
     case "$host" in
       *-*-cygwin* | *-*-mingw32*)
          LIBS="$LIBS -lintl"
@@ -1399,7 +1410,7 @@ if test x$enable_ffmpeg = xno; then
     have_ffmpeg=no
     AC_MSG_RESULT([disabled])
 else
-    if pkg-config --exists libavcodec; then
+    if dosbox_pkgconf_exists libavcodec libavformat libavutil libswscale libswresample; then
         have_ffmpeg=yes
         AC_MSG_RESULT([yes])
     else
@@ -1412,8 +1423,8 @@ dnl FEATURE: FFMPEG output support
 if test x$enable_ffmpeg = xyes; then
     if test x$have_ffmpeg = xyes; then
         PKGS="libavcodec libavformat libavutil libswscale libswresample"
-        FFMPEG_CFLAGS=`pkg-config $PKGS --cflags`
-        FFMPEG_LIBS=`pkg-config $PKGS --libs`
+        FFMPEG_CFLAGS=`"$PKG_CONFIG" $PKGS --cflags`
+        FFMPEG_LIBS=`"$PKG_CONFIG" $PKGS --libs`
 
         CFLAGS="$CFLAGS $FFMPEG_CFLAGS"
         CPPFLAGS="$CPPFLAGS $FFMPEG_CFLAGS"

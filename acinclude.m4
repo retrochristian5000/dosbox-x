@@ -6,9 +6,9 @@ AC_DEFUN([AM_PATH_SDL3], [
   SDL3_LIBS=
   AS_IF([test "x$enable_native_macos" != xyes && test "x$enable_sdl3" = xyes], [
     AC_MSG_CHECKING([for SDL3 using pkg-config])
-    AS_IF([command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl3], [
-      SDL3_CFLAGS=`pkg-config sdl3 --cflags`
-      SDL3_LIBS=`pkg-config sdl3 --libs`
+    AS_IF([dosbox_pkgconf_exists sdl3], [
+      SDL3_CFLAGS=`"$PKG_CONFIG" sdl3 --cflags`
+      SDL3_LIBS=`"$PKG_CONFIG" sdl3 --libs`
       AC_DEFINE([C_SDL3], [1])
       AC_MSG_RESULT([yes])
     ], [
@@ -63,10 +63,9 @@ AC_DEFUN([AM_PATH_SDL2], [
     AC_PATH_PROG([SDL2_CONFIG], [sdl2-config], [no])
     AC_MSG_CHECKING([for SDL2])
     AS_IF([test "x$sdl2_explicit_config" != xyes &&
-           command -v pkg-config >/dev/null 2>&1 &&
-           pkg-config --exists sdl2], [
-      SDL2_CFLAGS=`pkg-config sdl2 --cflags`
-      SDL2_LIBS=`pkg-config sdl2 --libs`
+           dosbox_pkgconf_exists sdl2], [
+      SDL2_CFLAGS=`"$PKG_CONFIG" sdl2 --cflags`
+      SDL2_LIBS=`"$PKG_CONFIG" sdl2 --libs`
       AC_DEFINE([C_SDL2], [1])
       AC_MSG_RESULT([found using pkg-config])
     ], [
