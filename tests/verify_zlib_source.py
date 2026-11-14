@@ -38,7 +38,8 @@ if index[1] != PIN:
 
 for needle in (
     'srcdir="$root/vs/zlib"',
-    'git -C "$root" submodule update --init --depth 1 -- vs/zlib',
+    '/bin/sh "$root/scripts/update-submodules.sh" vs/zlib',
+    'WHP_SUBMODULES="$submodule_mode"',
     '.build/zlib-build',
     '.build/zlib-host',
     '"$srcdir/configure" --static',
