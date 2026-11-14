@@ -40,7 +40,10 @@ AC_DEFUN([AM_PATH_SDL2], [
   AS_IF([test "x$enable_native_macos" != xyes && test "x$enable_sdl2" = xyes], [
     sdl2_config_args=
     sdl2_explicit_config=no
-    AS_IF([test -x vs/sdl2/linux-host/bin/sdl2-config], [
+    AS_IF([test -x vs/sdl2/linux-host/bin/sdl2-config &&
+           test -z "$SDL2_CONFIG" &&
+           test -z "$sdl2_exec_prefix" &&
+           test -z "$sdl2_prefix"], [
       SDL2_CONFIG=vs/sdl2/linux-host/bin/sdl2-config
       sdl2_explicit_config=yes
     ], [

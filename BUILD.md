@@ -236,13 +236,20 @@ Depending on the target OS to run DOSBox-X, the build environment and procedures
 
 NOTICE: Lowend builds should NOT be compiled with MinGW-w64 since they have extra dependencies which are not supported by Windows XP, Vista and 9x/NT4.
 
-The Autotools configuration requires GNU Autoconf 2.69 or newer. The SDL2
-and SDL3 feature switches are declared once in `configure.ac`. SDL3 is
-detected with `pkg-config`; SDL2 prefers the in-tree `sdl2-config`,
-then explicitly configured prefixes, then system `pkg-config` or
-`sdl2-config`. The native macOS build bypasses both SDL link probes.
-The legacy `--disable-sdl2test` and `--disable-alsatest` options remain
-accepted for compatibility but have no runtime tests to disable.
+The Autotools configuration requires GNU Autoconf 2.69 or newer. SDL2 is the
+supported cross-platform API baseline. The `--enable-sdl3` switch is reserved:
+it fails explicitly until the SDL3 host API port is complete rather than
+compiling SDL1/SDL2-specific code against incompatible SDL3 headers. To run
+an SDL2 backend over an SDL3 runtime, a system-provided `sdl2-compat` can be
+used where it supplies the SDL2 headers and link interface; this is not a
+claim that native SDL3 compilation already works.
+
+SDL2 discovery honors an explicit `SDL2_CONFIG` or `--with-sdl2-prefix` /
+`--with-sdl2-exec-prefix` before using the in-tree `sdl2-config`, then
+system `pkg-config` or `sdl2-config`. The native macOS build bypasses both
+SDL link probes and stays SDL-free. The legacy `--disable-sdl2test` and
+`--disable-alsatest` options remain accepted for compatibility but have no
+runtime tests to disable.
 
 ## General procedures to compile the source code (cross-platform)
 * First install the required tools and libraries, such as git, gcc, g++, make, Autotools, pkg-config, nasm, libxkbfile.

@@ -97,4 +97,12 @@ for required in (
     if required not in ACINCLUDE:
         raise AssertionError(f"missing updated Autoconf macro: {required}")
 
+require("Direct SDL3 API support is not implemented", "reject incomplete native SDL3 build")
+if 'SDL_STRING="SDL3"' in CONFIGURE:
+    raise AssertionError("SDL3 must not advertise an unimplemented direct API backend")
+for explicit in ('test -z "$SDL2_CONFIG"', 'test -z "$sdl2_exec_prefix"',
+                 'test -z "$sdl2_prefix"'):
+    if explicit not in ACINCLUDE:
+        raise AssertionError(f"pinned SDL2 discovery overrides explicit selection: {explicit}")
+
 print("Autoconf policy: ok")

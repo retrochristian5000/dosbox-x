@@ -522,7 +522,7 @@ AC_ARG_ENABLE([sdl2],
 )
 
 AC_ARG_ENABLE([sdl3],
-  [AS_HELP_STRING([--enable-sdl3],[Build DOSBox-X using SDL3])],
+  [AS_HELP_STRING([--enable-sdl3],[Reserved: direct SDL3 host API port is not yet implemented])],
   [enable_sdl3=$enableval],
   [enable_sdl3=no]
 )
@@ -538,9 +538,8 @@ if test x"$enable_native_macos" = xyes; then
   enable_sdlnet=no
 fi
 
-dnl LIBRARY TEST: SDL 3.x
-SDL3_VERSION=3.5.0
-AM_PATH_SDL3($SDL3_VERSION)
+dnl LIBRARY TEST: SDL 3.x (reserved for a future direct host API port)
+AM_PATH_SDL3
 
 dnl LIBRARY TEST: SDL 2.x
 SDL2_VERSION=2.0.5
@@ -577,15 +576,9 @@ if test x"$enable_native_macos" = xyes; then
     SDL_STRING="NativeMacOS"
     AC_MSG_NOTICE([Building native macOS host backend without an SDL runtime])
 elif test x"$enable_sdl3" = xyes; then
-    AC_MSG_NOTICE([--enable-sdl3 specified, trying SDL3])
-    if test -n "$SDL3_LIBS"; then
-        SDL_STRING="SDL3"
-        LIBS="$LIBS $SDL3_LIBS"
-        CPPFLAGS="$CPPFLAGS $SDL3_CFLAGS"
-        AC_MSG_NOTICE([Building with SDL3])
-    else
-        AC_MSG_ERROR([--enable-sdl3 was specified, but SDL3 was not found])
-    fi
+    dnl SDL3 is not ABI-compatible with the remaining SDL2/SDL1 host calls.
+    dnl Never report a successful SDL3 build without the complete API port.
+    AC_MSG_ERROR([Direct SDL3 API support is not implemented; use SDL2 (including sdl2-compat over SDL3) or the SDL-free native macOS backend])
 elif test x"$enable_sdl2" = xyes; then
     AC_MSG_NOTICE([using the SDL2 build baseline])
     if test -n "$SDL2_LIBS"; then
@@ -597,7 +590,7 @@ elif test x"$enable_sdl2" = xyes; then
         AC_MSG_ERROR([SDL2 was not found])
     fi
 else
-    AC_MSG_ERROR([SDL1 support has been removed; enable SDL2, enable native macOS, or explicitly enable SDL3])
+    AC_MSG_ERROR([SDL1 support has been removed; use SDL2 (including sdl2-compat) or the SDL-free native macOS backend])
 fi
 
 AC_SUBST([SDL_STRING])

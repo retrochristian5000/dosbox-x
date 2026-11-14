@@ -3741,13 +3741,15 @@ static void GUI_StartUp() {
 
     LOG(LOG_GUI,LOG_DEBUG)("Starting GUI");
 
-#if defined(C_SDL2)
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+    LOG(LOG_GUI,LOG_DEBUG)("Using native macOS host (SDL-free)");
+#elif defined(C_SDL2)
     LOG(LOG_GUI,LOG_DEBUG)("This version compiled against SDL 2.x");
 #else
     LOG(LOG_GUI,LOG_DEBUG)("This version compiled against SDL 1.x");
 #endif
 
-#if defined(C_SDL2)
+#if defined(C_SDL2) && !(defined(C_NATIVE_MACOS) && C_NATIVE_MACOS)
     /* while we're here, SDL 2.0.5 has some issues with Linux/X11, encourage the user to update SDL2. */
     {
         SDL_version v;

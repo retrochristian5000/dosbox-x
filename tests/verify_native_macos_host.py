@@ -177,10 +177,10 @@ require(configure, 'SDL3_CONFIG=no', "native configure SDL3 discovery reset")
 require(configure, 'SDL3_CFLAGS=""', "native configure SDL3 compile flags reset")
 require(configure, 'SDL3_LIBS=""', "native configure SDL3 link flags reset")
 require(acinclude,
-        "if test x$enable_native_macos != xyes && test x$enable_sdl2enable = xyes ; then",
+        'AS_IF([test "x$enable_native_macos" != xyes && test "x$enable_sdl2" = xyes]',
         "SDL2 discovery must be vetoed by native macOS mode")
 require(acinclude,
-        "if test x$enable_native_macos != xyes && test x$enable_sdl3enable = xyes ; then",
+        'AS_IF([test "x$enable_native_macos" != xyes && test "x$enable_sdl3" = xyes]',
         "SDL3 discovery must be vetoed by native macOS mode")
 require(configure, "AC_DEFINE([C_NATIVE_MACOS]", "native config define")
 require(configure, "AM_CONDITIONAL([NATIVE_MACOS]", "native automake conditional")
@@ -372,6 +372,8 @@ if "<cstdint>" not in metal_header:
     raise AssertionError("Metal public header misses fixed-width integer declarations")
 if "class CMetal" not in metal:
     raise AssertionError("Metal implementation no longer owns its private CMetal class")
+require(sdlmain_cpp, 'LOG(LOG_GUI,LOG_DEBUG)("Using native macOS host (SDL-free)")',
+        "native startup diagnostic must not claim an SDL2 runtime")
 require(sdlmain_cpp, "#include <output/output_metal.h>",
         "sdlmain must consume the Metal public header")
 require(sdl_gui, "#include <output/output_metal.h>",
