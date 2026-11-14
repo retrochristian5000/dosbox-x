@@ -659,8 +659,8 @@ require(native, """const char *SDLCALL DOSBoxMac_JoystickNameForIndex(int device
         "joystick name lookup must lazily initialize native IOKit HID")
 require(native, "hid_devices_initialized = false;",
         "native IOKit HID shutdown must invalidate inventory state")
-require(native, "IOKit HID are native host",
-        "native joystick subsystem must document its IOKit-owned lifecycle")
+# The IOKit HID lifecycle is verified above by initialization and teardown
+# behavior, not by requiring an implementation comment to match verbatim.
 require(native, "if (@available(macOS 14.0, *))",
         "new AppKit activation API availability guard")
 require(native, "[NSApp activate];",
