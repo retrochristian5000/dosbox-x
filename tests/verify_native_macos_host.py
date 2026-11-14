@@ -150,8 +150,10 @@ require(root_makefile, "dosbox-x.app: dosbox-x.app/.stamp", "incremental macOS a
 require(root_makefile, "touch dosbox-x.app/.stamp", "macOS app bundle completion stamp")
 require(sdk_resolver, 'xcrun --sdk macosx --show-sdk-path',
         "macOS SDK resolver must use the active Xcode SDK")
-require(sdk_resolver, '$sdk/usr/include/sys/types.h',
-        "macOS SDK resolver must validate sys/types.h")
+require(sdk_resolver, '[ -d "$sdk" ]',
+        "macOS SDK resolver must validate the SDK directory")
+if '$sdk/usr/include/sys/types.h' in sdk_resolver:
+    raise AssertionError("macOS SDK resolver requires a fixed physical system-header path")
 require(llvm_bootstrap, 'export SDKROOT',
         "standalone LLVM must inherit the macOS SDK")
 require(llvm_bootstrap, '"-DCMAKE_OSX_SYSROOT=$SDKROOT"',

@@ -327,6 +327,19 @@ renderer surfaces, audio, and remaining joystick consumers are ported and
 tested. Linux/Windows SDL2 paths remain temporary until equivalent native SDL3
 features pass integration tests. The SDL-free native macOS backend is retained.
 
+Header lookup follows the selected compiler and its SDK, plus explicit
+`CPPFLAGS` and pkg-config search paths. Neither a fixed macOS
+`SDKROOT/usr/include/sys/types.h` file nor a universal
+`/usr/local/include` directory is required: the macOS build compiles a real
+`#include <sys/types.h>` probe. On MinGW, ncurses configuration can come
+from `ncursesw6-config`, `pkg-config ncursesw`, `pkg-config ncurses`,
+or caller-provided include flags. The XKB extension probes include the base
+XKB header as a compile preamble rather than injecting a compiler-specific
+`-include` flag. For nonstandard header trees, pass the correct target
+`CPPFLAGS` (and `LDFLAGS` for linking); avoid importing headers from a
+different architecture or SDK. Run `python3 tests/verify_external_headers.py`
+to check these invariants.
+
 The primary Autoconf probes use the selected C/C++ compiler before testing
 graphics libraries. The GL, opengl32 and X11 fallbacks check exported library
 symbols rather than linking a dummy `main`; Xrandr is checked with its X11

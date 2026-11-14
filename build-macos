@@ -260,7 +260,7 @@ for arch in ${architectures}; do
 
     printf '#include <sys/types.h>\nstatic off_t dosbox_x_off;\nint main(void) { return dosbox_x_off != 0; }\n' |
         "${CC:-cc}" ${CPPFLAGS} ${CFLAGS} -x c -fsyntax-only - || {
-            echo "macOS SDK/compiler probe failed for ${arch}: $SDKROOT/usr/include/sys/types.h" >&2
+            printf 'macOS SDK/compiler cannot resolve <sys/types.h> for %s (SDK: %s)\n' "$arch" "$SDKROOT" >&2
             echo "CPPFLAGS=${CPPFLAGS}" >&2
             echo "CFLAGS=${CFLAGS}" >&2
             exit 1

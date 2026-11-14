@@ -160,4 +160,20 @@ for source_name, source in (("configure.ac", CONFIGURE), ("acinclude.m4", ACINCL
 if 'iconv_t cd = iconv_open("UTF-8", "UTF-8");' not in CONFIGURE:
     raise AssertionError("iconv link test does not force symbol resolution")
 
+# External development headers may be in SDK overlays, compiler defaults, or
+# explicitly selected metadata include directories, not /usr/local/include.
+for forced in (
+    'CPPFLAGS="$CPPFLAGS -I/usr/local/include"',
+    'CPPFLAGS="$CPPFLAGS -include X11/XKBlib.h"',
+):
+    if forced in CONFIGURE:
+        raise AssertionError(f"header discovery hardcodes one installation: {forced}")
+for present in (
+    "command -v ncursesw6-config",
+    "dosbox_pkgconf_exists ncursesw",
+    "dosbox_pkgconf_exists ncurses",
+    "[[#include <X11/XKBlib.h>]]",
+):
+    require(present, "compiler/metadata-aware external header probing")
+
 print("Autoconf policy: ok")

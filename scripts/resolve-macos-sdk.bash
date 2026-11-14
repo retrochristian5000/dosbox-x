@@ -19,9 +19,8 @@ fi
     printf 'error: macOS SDK directory does not exist: %s\n' "$sdk" >&2
     exit 1
 }
-[ -f "$sdk/usr/include/sys/types.h" ] || {
-    printf 'error: macOS SDK is missing usr/include/sys/types.h: %s\n' "$sdk" >&2
-    exit 1
-}
+# SDK headers may come from the compiler's SDK overlay, VFS or search
+# paths rather than a fixed physical location. The build validates actual
+# #include <sys/types.h> behavior using the selected target compiler.
 
 printf '%s\n' "$sdk"

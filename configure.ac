@@ -446,15 +446,9 @@ int main(int argc,char **argv) {
 };
 ])],AC_MSG_RESULT(yes);AC_DEFINE(C_SET_PRIORITY,1),AC_MSG_RESULT(no))
 
-dnl Some target detection and actions for them
-case "$host" in
-    *-*-darwin* | *-*-openbsd*)
-       dnl El Capitan's refusal to allow sudo make install to /usr/include, and the failure of most open source to
-       dnl include from /usr/local/include is irritating and tiresome...
-       CPPFLAGS="$CPPFLAGS -I/usr/local/include"
-       ;;
-esac
-
+dnl Keep external headers under the selected compiler/SDK search paths,
+dnl plus caller CPPFLAGS or pkg-config flags. A forced /usr/local/include
+dnl can override SDK/system headers or mix architectures on Apple Silicon.
 dnl Keep the generic compiler flags ISA-neutral. The selected compiler target
 dnl already defines the ABI baseline; CPU/ISA tuning belongs in an explicit
 dnl target build profile or in caller-supplied CFLAGS/CXXFLAGS.
@@ -890,10 +884,22 @@ dnl Some stuff for the icon.
 case "$host" in
     *-*-cygwin* | *-*-mingw32*)
        dnl MinGW puts ncurses headers in a subdir
-       ncursescfg=`ncursesw6-config --cflags`
-       CXXFLAGS="$CXXFLAGS $ncursescfg"
-       CPPFLAGS="$CPPFLAGS $ncursescfg"
-       CFLAGS="$CFLAGS $ncursescfg"
+       ncursescfg=
+       if command -v ncursesw6-config >/dev/null 2>&1 &&
+          ncursescfg=`ncursesw6-config --cflags 2>/dev/null`; then
+         :
+       elif dosbox_pkgconf_exists ncursesw; then
+         ncursescfg=`"$PKG_CONFIG" --cflags ncursesw` || ncursescfg=
+       elif dosbox_pkgconf_exists ncurses; then
+         ncursescfg=`"$PKG_CONFIG" --cflags ncurses` || ncursescfg=
+       fi
+       if test -n "$ncursescfg"; then
+         CXXFLAGS="$CXXFLAGS $ncursescfg"
+         CPPFLAGS="$CPPFLAGS $ncursescfg"
+         CFLAGS="$CFLAGS $ncursescfg"
+       else
+         AC_MSG_NOTICE([ncurses headers will use caller CPPFLAGS and compiler defaults])
+       fi
     ;;
     *)
        WINDRES=":"
@@ -988,16 +994,15 @@ if test x$enable_x11 != xno; then
                [have_xrandr_lib=yes], [have_xrandr_lib=no], [-lX11])
   AC_CHECK_HEADER(X11/XKBlib.h, have_x11_h=yes, have_x11_h=no, )
 
-  dnl Compile test will fail for XKBrules.h if we do not also include XKBlib.h
-  dnl Hope your compiler supports the GCC style -include option!
+  dnl These extensions depend on the base XKB header. Pass it as the
+  dnl compile test preamble rather than forcing a nonportable -include flag.
   if test x$have_x11_h = xyes; then
-    save_CPPFLAGS=$CPPFLAGS
-    CPPFLAGS="$CPPFLAGS -include X11/XKBlib.h"
-
-    AC_CHECK_HEADER(X11/extensions/XKBrules.h, have_x11_ext_xkbrules_h=yes, have_x11_ext_xkbrules_h=no, )
-    AC_CHECK_HEADER(X11/extensions/XKBfile.h, have_xkbfile_h=yes, have_xkbfile_h=no, )
-
-    CPPFLAGS=$save_CPPFLAGS
+    AC_CHECK_HEADER([X11/extensions/XKBrules.h],
+      [have_x11_ext_xkbrules_h=yes], [have_x11_ext_xkbrules_h=no],
+      [[#include <X11/XKBlib.h>]])
+    AC_CHECK_HEADER([X11/extensions/XKBfile.h],
+      [have_xkbfile_h=yes], [have_xkbfile_h=no],
+      [[#include <X11/XKBlib.h>]])
   fi
 fi
 

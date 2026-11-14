@@ -101,6 +101,5 @@ jobs:
       - name: Resolve and verify macOS SDK system headers
         run: |
           sdk="$(bash scripts/resolve-macos-sdk.bash)"
-          test -f "$sdk/usr/include/sys/types.h"
           printf '#include <sys/types.h>\nstatic off_t probe;\nint main(void) { return probe != 0; }\n' |
             SDKROOT="$sdk" clang -std=c11 -Wall -Wextra -Werror -x c -fsyntax-only -

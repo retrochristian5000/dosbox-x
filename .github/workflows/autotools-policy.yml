@@ -10,6 +10,8 @@ on:
       - 'include/Makefile.am'
       - 'src/**/Makefile.am'
       - 'tests/verify_autoconf_policy.py'
+      - 'tests/verify_external_headers.py'
+      - 'scripts/resolve-macos-sdk.bash'
       - 'tests/verify_automake_policy.py'
       - 'tests/verify_sdl3_lifecycle.py'
       - 'src/gui/sdlmain.cpp'
@@ -23,6 +25,8 @@ on:
       - 'include/Makefile.am'
       - 'src/**/Makefile.am'
       - 'tests/verify_autoconf_policy.py'
+      - 'tests/verify_external_headers.py'
+      - 'scripts/resolve-macos-sdk.bash'
       - 'tests/verify_automake_policy.py'
       - 'tests/verify_sdl3_lifecycle.py'
       - 'src/gui/sdlmain.cpp'
@@ -38,6 +42,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Verify configure.ac modernization guard
         run: python3 tests/verify_autoconf_policy.py
+      - name: Verify external header discovery and SDK compiler boundary
+        run: python3 tests/verify_external_headers.py
       - name: Verify SDL3 lifecycle API migration
         run: python3 tests/verify_sdl3_lifecycle.py
       - name: Verify Automake graph and portability guard
