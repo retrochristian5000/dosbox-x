@@ -65,7 +65,7 @@ Interactive build configuration
 -------------------------------
 
 Run `./build menuconfig` to choose a persistent build profile/backend, compiler toolchain, and the macOS universal-build setting.
-SDL2 remains the general cross-platform build baseline. On macOS, the `macos` profile now uses the native AppKit/Core Audio/IOKit host backend by default; `build-macos-sdl2` is the explicit legacy SDL2 fallback.
+SDL2 remains required by the unfinished Linux/Windows cross-platform hosts, but it is retired as a macOS build backend. The `macos` profile exclusively uses the native AppKit/Core Audio/IOKit host; `DOSBOX_MACOS_BACKEND=sdl2` and the former SDL2 macOS launchers are rejected/removed.
 The menu previews the resolved backend before it saves, so unsupported combinations are rejected instead of becoming stale build state.
 
 The generated `.dosbox-x-build.conf` file is local working state and is ignored by Git. It contains data only; `./build`
@@ -86,8 +86,9 @@ With Metal support, `[sdl] output=default` selects the Metal/CAMetalLayer render
 GPU resources initialize with the first graphics mode, including firmware boot
 paths that do not enter the built-in DOS shell. The native build disables OpenGL
 while this host split is active; software surface and TTF paths use the native
-AppKit surface implementation. Use `./build-macos-sdl2` when the legacy SDL2
-host/backend is explicitly required.
+AppKit surface implementation. Legacy SDL2 macOS builds are disabled and no
+longer packaged by macOS CI. SDL2-shaped compile-time types remain temporarily
+for the native host compatibility header; no SDL2 runtime is linked.
 
 The native build runs `otool -L` and `nm -u` guards after linking and fails if
 an SDL/SDL2/SDL2_net dylib or unresolved SDL runtime symbol leaks into the binary.
@@ -247,8 +248,8 @@ These changes are intentionally guarded by `C_SDL3`; they are not proof that
 DOSBox-X already builds against SDL3. Direct SDL3 configuration still fails
 until SDL3 event/input structures, window creation/fullscreen behavior,
 renderer surfaces, audio, and remaining joystick consumers are ported and
-tested. Do not delete the working SDL2 backend or the SDL-free native macOS
-backend before the equivalent SDL3 features pass integration tests.
+tested. Linux/Windows SDL2 paths remain temporary until equivalent native SDL3
+features pass integration tests. The SDL-free native macOS backend is retained.
 
 The Autotools configuration requires GNU Autoconf 2.69 or newer. SDL2 is the
 supported cross-platform API baseline. The `--enable-sdl3` switch is reserved:
@@ -369,20 +370,14 @@ enough for Autotools, plus `include`, `lib`, and available pkg-config paths,
 while preserving user flags. Universal builds select separate dependency paths.
 The native backend remains SDL-free.
 
-* Compile natively for the host architecture. The first command is the SDL-free native macOS backend; the second is the explicit legacy SDL2 fallback.
+* Compile natively for the host architecture using the SDL-free macOS backend:
   ```
   ./build-macos
   ```
-  ```
-  ./build-macos-sdl2
-  ```
-* _(Optional)_ Add `universal` option to build an Universal Binary on an Apple Silicon CPU (will *not* work on Intel)
+* _(Optional)_ Add `universal` to build for both Apple Silicon and Intel:
   ```
   ./build-macos universal
   ```
-  ```
-  ./build-macos-sdl2 universal
-  ````
 * You can build an App Bundle from the result of this build with
   ```
   make dosbox-x.app
@@ -393,7 +388,7 @@ The native backend remains SDL-free.
   sudo port install autoconf automake nasm glfw glew fluidsynth libslirp libpcap pkgconfig libsdl2_net libpng zlib
   ./build-macosold
 ```
-Use `./build-macosold-sdl2` for SDL2 builds.
+The previous `build-macosold-sdl2` launcher has also been retired; older macOS builds must not silently re-enable SDL2.
 
 ## To compile DOSBox-X for DOS with HX-DOS platform
   * Start a 32-bit toolchain from the original MinGW (not the MinGW-w64 project). 

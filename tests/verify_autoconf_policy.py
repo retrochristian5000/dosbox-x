@@ -97,6 +97,9 @@ for required in (
     if required not in ACINCLUDE:
         raise AssertionError(f"missing updated Autoconf macro: {required}")
 
+require("macOS SDL2 builds are retired; use --enable-native-macos", "reject standalone macOS SDL2 configuration")
+require('case "$host" in', "macOS host selection guard")
+
 require("Direct SDL3 API support is not implemented", "reject incomplete native SDL3 build")
 if 'SDL_STRING="SDL3"' in CONFIGURE:
     raise AssertionError("SDL3 must not advertise an unimplemented direct API backend")

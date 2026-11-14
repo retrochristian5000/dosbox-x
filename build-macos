@@ -4,18 +4,22 @@ set -e
 top=$(pwd)
 if test -z "${top}" ; then exit 1; fi
 
-SDKROOT="$(bash "$top/scripts/resolve-macos-sdk.bash")" || exit 1
-export SDKROOT
-echo "Using macOS SDK: $SDKROOT"
-
 macos_backend="${DOSBOX_MACOS_BACKEND:-native}"
 case "${macos_backend}" in
-    native|sdl2) ;;
+    native) ;;
+    sdl2)
+        echo "macOS SDL2 builds are retired; use ./build-macos (native AppKit host)" >&2
+        exit 2
+        ;;
     *)
-        echo "Unknown macOS backend: ${macos_backend} (expected native or sdl2)" >&2
+        echo "Unknown macOS backend: ${macos_backend} (expected native)" >&2
         exit 2
         ;;
 esac
+
+SDKROOT="$(bash "$top/scripts/resolve-macos-sdk.bash")" || exit 1
+export SDKROOT
+echo "Using macOS SDK: $SDKROOT"
 
 clean_build="${DOSBOX_CLEAN_BUILD:-0}"
 force_reconfigure="${DOSBOX_RECONFIGURE:-0}"
@@ -50,6 +54,16 @@ while [ "$#" -gt 0 ]; do
     esac
     shift
 done
+
+for configure_arg in "${configure_args[@]}"; do
+    case "$configure_arg" in
+        --enable-sdl2|--enable-sdl2=*)
+            echo "macOS SDL2 builds are retired; remove $configure_arg" >&2
+            exit 2
+            ;;
+    esac
+done
+unset configure_arg
 
 # Resolve native Homebrew tools before autogen.sh, including Autoconf/Automake.
 source "$top/scripts/resolve-macos-homebrew.bash"
@@ -105,10 +119,6 @@ orig_PKG_CONFIG_PATH="${PKG_CONFIG_PATH:-}"
 active_config="$top/.build/macos-active-config.key"
 
 clean_dependency_builds() {
-    if [ "${macos_backend}" = "sdl2" ]; then
-        rm -rf "$top/vs/sdl2/linux-host" "$top/vs/sdl2/linux-build"
-        rm -rf "$top/vs/sdl2net/linux-host" "$top/vs/sdl2net/linux-build"
-    fi
     rm -rf "$top/.build/zlib-host" "$top/.build/zlib-build"
     rm -rf "$top/vs/libpng/linux-host" "$top/vs/libpng/linux-build"
     rm -rf "$top/vs/freetype/linux-host" "$top/vs/freetype/linux-build"
@@ -223,16 +233,14 @@ for arch in ${architectures}; do
     PKG_CONFIG_PATH="${orig_PKG_CONFIG_PATH}"
     export CFLAGS CXXFLAGS OBJCXXFLAGS CPPFLAGS LDFLAGS LIBS PKG_CONFIG_PATH
 
-    if [ "${macos_backend}" = "native" ]; then
-        case " ${LIBS} ${LDFLAGS} " in
-            *-lSDL*|*SDL2.framework*|*SDL3.framework*)
-                echo "Native macOS build refuses explicit SDL runtime link flags" >&2
-                exit 2
-                ;;
-        esac
-        unset SDL_CONFIG SDL2_CONFIG SDL2_CFLAGS SDL2_LIBS \
-              SDL3_CONFIG SDL3_CFLAGS SDL3_LIBS
-    fi
+    case " ${LIBS} ${LDFLAGS} " in
+        *-lSDL*|*SDL2.framework*|*SDL3.framework*)
+            echo "Native macOS build refuses explicit SDL runtime link flags" >&2
+            exit 2
+            ;;
+    esac
+    unset SDL_CONFIG SDL2_CONFIG SDL2_CFLAGS SDL2_LIBS \
+          SDL3_CONFIG SDL3_CFLAGS SDL3_LIBS
 
     printf '#include <sys/types.h>\nstatic off_t dosbox_x_off;\nint main(void) { return dosbox_x_off != 0; }\n' |
         "${CC:-cc}" ${CPPFLAGS} ${CFLAGS} -x c -fsyntax-only - || {
@@ -242,13 +250,7 @@ for arch in ${architectures}; do
             exit 1
         }
 
-    if [ "${macos_backend}" = "sdl2" ]; then
-        # Keep all SDL runtime construction outside the native macOS path.
-        # shellcheck source=scripts/build-macos-legacy-sdl.bash
-        source "$top/scripts/build-macos-legacy-sdl.bash" || exit 1
-    else
-        echo "Using native AppKit/Core Audio/IOKit host backend (no SDL runtime)"
-    fi
+    echo "Using native AppKit/Core Audio/IOKit host backend (no SDL runtime)"
     export LDFLAGS CPPFLAGS LIBS
 
     zlib_key="$(dependency_key zlib)"
@@ -300,12 +302,7 @@ for arch in ${architectures}; do
         dosbox_use_homebrew_paths
     fi
 
-    configure_options=(--enable-debug=heavy --prefix=/usr)
-    if [ "${macos_backend}" = "native" ]; then
-        configure_options+=(--enable-native-macos --disable-opengl)
-    else
-        configure_options+=(--enable-sdl2)
-    fi
+    configure_options=(--enable-debug=heavy --prefix=/usr --enable-native-macos --disable-opengl)
     if [ "${universal}" -eq 1 ]; then
         configure_options+=(--enable-universal)
     fi
@@ -359,17 +356,15 @@ for arch in ${architectures}; do
     echo "Incrementally compiling DOSBox-X for ${arch}"
     make -j"$(sysctl -n hw.ncpu)" || exit 1
 
-    if [ "${macos_backend}" = "native" ]; then
-        if otool -L src/dosbox-x | grep -Eiq 'SDL(2|2_net|_net)?'; then
-            echo "Native macOS dependency guard: SDL dylib found in src/dosbox-x" >&2
-            otool -L src/dosbox-x >&2
-            exit 1
-        fi
-        if nm -u src/dosbox-x | grep -Eq '(_SDL_|_SDLNet_)'; then
-            echo "Native macOS dependency guard: unresolved SDL runtime symbol found" >&2
-            nm -u src/dosbox-x | grep -E '(_SDL_|_SDLNet_)' >&2
-            exit 1
-        fi
+    if otool -L src/dosbox-x | grep -Eiq 'SDL(2|2_net|_net)?'; then
+        echo "Native macOS dependency guard: SDL dylib found in src/dosbox-x" >&2
+        otool -L src/dosbox-x >&2
+        exit 1
+    fi
+    if nm -u src/dosbox-x | grep -Eq '(_SDL_|_SDLNet_)'; then
+        echo "Native macOS dependency guard: unresolved SDL runtime symbol found" >&2
+        nm -u src/dosbox-x | grep -E '(_SDL_|_SDLNet_)' >&2
+        exit 1
     fi
 
     arch_binary="src/dosbox-x-${arch}"

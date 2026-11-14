@@ -18,7 +18,7 @@ warn() { printf 'menuconfig: %s\n' "$*" >&2; }
 valid_profile() {
     case "$1" in
         auto|unix|macos|mingw|emscripten) return 0 ;;
-        build-mingw-lowend9x|build-mingw-hx-dos|build-riscos|build-macosold) return 1 ;;
+        build-mingw-lowend9x|build-mingw-hx-dos|build-riscos|build-macosold|build-macos-sdl2|build-macosold-sdl2) return 1 ;;
         build-*) return 0 ;;
         *) return 1 ;;
     esac
@@ -79,7 +79,7 @@ choose_profile() {
         if [ -f "$f" ]; then
             local name="$(basename -- "$f")"
             case "$name" in
-                build-mingw-lowend9x|build-mingw-hx-dos|build-riscos|build-macosold) ;;
+                build-mingw-lowend9x|build-mingw-hx-dos|build-riscos|build-macosold|build-macos-sdl2|build-macosold-sdl2) ;;
                 *) choices+=("$name") ;;
             esac
         fi
@@ -148,7 +148,7 @@ load_config
 while :; do
     printf '\nDOSBox-X build configuration\n'
     printf '  profile/backend:  %s\n' "$profile"
-    printf '  SDL baseline:     SDL2\n'
+    printf '  Host policy:      native macOS; SDL2 still needed on other platforms\n'
     printf '  macOS universal:  %s\n' "$(universal_name)"
     printf '  compiler:         %s\n' "$(toolchain_name)"
     printf '\n'

@@ -538,6 +538,16 @@ if test x"$enable_native_macos" = xyes; then
   enable_sdlnet=no
 fi
 
+dnl Retire the SDL2 macOS host even for direct ./configure invocations.
+dnl Native AppKit is the supported macOS backend while SDL3 migration proceeds.
+case "$host" in
+  *-*-darwin*)
+    if test x"$enable_native_macos" != xyes; then
+      AC_MSG_ERROR([macOS SDL2 builds are retired; use --enable-native-macos until the SDL3 host port is complete])
+    fi
+    ;;
+esac
+
 dnl LIBRARY TEST: SDL 3.x (reserved for a future direct host API port)
 AM_PATH_SDL3
 

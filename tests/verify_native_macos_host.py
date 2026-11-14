@@ -66,8 +66,7 @@ def native_macos_view(text):
 
 build = read("build-macos")
 driver = read("build")
-legacy = read("build-macos-sdl2")
-legacy_sdl_deps = read("scripts/build-macos-legacy-sdl.bash")
+macos_workflow = read(".github/workflows/macos.yml")
 acinclude = read("acinclude.m4")
 sdk_resolver = read("scripts/resolve-macos-sdk.bash")
 llvm_bootstrap = read("scripts/bootstrap-native-llvm.bash")
@@ -101,14 +100,14 @@ support_cpp = read("src/misc/support.cpp")
 
 require(build, 'macos_backend="${DOSBOX_MACOS_BACKEND:-native}"',
         "build-macos must default to native")
-require(build, 'if [ "${macos_backend}" = "sdl2" ]; then',
-        "SDL construction must be isolated behind the legacy backend")
-require(build, 'source "$top/scripts/build-macos-legacy-sdl.bash" || exit 1',
-        "legacy SDL construction must live outside the native build body")
-require(legacy_sdl_deps, "Compiling the legacy in-tree SDL 2.x backend",
-        "isolated legacy SDL2 dependency build")
-require(legacy_sdl_deps, "Compiling the legacy in-tree SDL2_net backend",
-        "isolated legacy SDL2_net dependency build")
+require(build, 'macOS SDL2 builds are retired; use ./build-macos',
+        "macOS SDL2 environment selection must fail closed")
+require(build, 'macOS SDL2 builds are retired; remove $configure_arg',
+        "macOS SDL2 configure argument must fail closed")
+if "build-macos-sdl2" in macos_workflow or "dosbox-x-sdl2" in macos_workflow:
+    raise AssertionError("macOS CI must not build or publish retired SDL2 variants")
+if 'source "$top/scripts/build-macos-legacy-sdl.bash"' in build:
+    raise AssertionError("retired SDL2 dependency builder remains callable")
 for forbidden_inline_sdl_build in (
     '(cd vs/sdl2 && ./build-dosbox.sh)',
     '(cd vs/sdl2net && ./build-dosbox.sh)',
@@ -162,7 +161,6 @@ require(build, 'OBJCXXFLAGS="${arch_flags}${orig_OBJCXXFLAGS}"',
 for polluted in ('CFLAGS="${CFLAGS}${new}"', 'CXXFLAGS="${CXXFLAGS}${new}"'):
     if polluted in build:
         raise AssertionError(f"macOS include search paths leaked into language flags: {polluted}")
-require(legacy, "DOSBOX_MACOS_BACKEND=sdl2", "legacy SDL2 wrapper")
 
 require(configure, "--enable-native-macos", "configure switch")
 require(configure, """if test x"$enable_native_macos" = xyes; then

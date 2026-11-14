@@ -23,8 +23,6 @@ jobs:
         run: |
           brew install autoconf automake nasm glfw glew coreutils sevenzip libslirp fluid-synth pkg-config libtool ffmpeg@7
           mkdir -p package/dosbox-x
-          mkdir -p package/dosbox-x-sdl2
-          # cd vs/sdlnet && ./build-dosbox.sh
       - name: Update build info
         run: |
           echo "timestamp=`git show -s --format=%at | xargs -I# gdate -d @# +%Y%m%d%H%M%S`" >> $GITHUB_ENV
@@ -55,13 +53,6 @@ jobs:
           grep -q 'Reusing cached libpng' .build/incremental-native.log
           grep -q 'Reusing cached FreeType' .build/incremental-native.log
           grep -q 'Reusing DOSBox-X configure state' .build/incremental-native.log
-      - name: Build macOS Legacy SDL2
-        run: |
-          top=`pwd`
-          ./build-macos-sdl2
-          strip $top/src/dosbox-x
-          make dosbox-x.app
-          mv dosbox-x.app $top/package/dosbox-x-sdl2
       - name: Detect OSFREE build
         id: osfree
         shell: bash
@@ -76,18 +67,14 @@ jobs:
         if: steps.osfree.outputs.osfree != 'true'
         run: |
           top=`pwd`
-          chmod +x $top/package/dosbox-x/dosbox-x.app/Contents/MacOS/dosbox-x $top/package/dosbox-x-sdl2/dosbox-x.app/Contents/MacOS/dosbox-x
+          chmod +x $top/package/dosbox-x/dosbox-x.app/Contents/MacOS/dosbox-x
           $top/package/dosbox-x/dosbox-x.app/Contents/MacOS/dosbox-x -tests
-          $top/package/dosbox-x-sdl2/dosbox-x.app/Contents/MacOS/dosbox-x -tests
       - name: Package build
         run: |
           top=`pwd`
           cp $top/CHANGELOG $top/package/dosbox-x/CHANGELOG.txt
           cp $top/COPYING $top/package/dosbox-x/COPYING.txt
           cp $top/contrib/macos/readme.txt $top/package/dosbox-x/README.txt
-          cp $top/CHANGELOG $top/package/dosbox-x-sdl2/CHANGELOG.txt
-          cp $top/COPYING $top/package/dosbox-x-sdl2/COPYING.txt
-          cp $top/contrib/macos/readme.txt $top/package/dosbox-x-sdl2/README.txt
           cd $top/package/
           TIMESTAMP="${{ env.timestamp }}"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
@@ -117,7 +104,6 @@ jobs:
           echo '#define OSFREE 1' >> vs/config_package.h
           rm -rf dosbox-x.app
           rm -rf "$top/package/dosbox-x/dosbox-x.app"
-          rm -rf "$top/package/dosbox-x-sdl2/dosbox-x.app"
       - name: Build macOS Native OSFREE
         if: steps.osfree.outputs.osfree != 'true'
         run: |
@@ -126,14 +112,6 @@ jobs:
           strip $top/src/dosbox-x
           make dosbox-x.app
           mv dosbox-x.app $top/package/dosbox-x
-      - name: Build macOS Legacy SDL2 OSFREE
-        if: steps.osfree.outputs.osfree != 'true'
-        run: |
-          top=`pwd`
-          ./build-macos-sdl2
-          strip $top/src/dosbox-x
-          make dosbox-x.app
-          mv dosbox-x.app $top/package/dosbox-x-sdl2
       - name: Package build
         if: steps.osfree.outputs.osfree != 'true'
         run: |
@@ -171,8 +149,6 @@ jobs:
         run: |
           brew install autoconf automake nasm glfw glew coreutils sevenzip libslirp fluid-synth pkg-config libtool ffmpeg@7
           mkdir -p package/dosbox-x
-          mkdir -p package/dosbox-x-sdl2
-          # cd vs/sdlnet && ./build-dosbox.sh
       - name: Update build info
         run: |
           echo "timestamp=`git show -s --format=%at | xargs -I# gdate -d @# +%Y%m%d%H%M%S`" >> $GITHUB_ENV
@@ -203,13 +179,6 @@ jobs:
           grep -q 'Reusing cached libpng' .build/incremental-native.log
           grep -q 'Reusing cached FreeType' .build/incremental-native.log
           grep -q 'Reusing DOSBox-X configure state' .build/incremental-native.log
-      - name: Build macOS Legacy SDL2
-        run: |
-          top=`pwd`
-          ./build-macos-sdl2
-          strip $top/src/dosbox-x
-          make dosbox-x.app
-          mv dosbox-x.app $top/package/dosbox-x-sdl2
       - name: Detect OSFREE build
         id: osfree
         shell: bash
@@ -224,18 +193,14 @@ jobs:
         if: steps.osfree.outputs.osfree != 'true'
         run: |
           top=`pwd`
-          chmod +x $top/package/dosbox-x/dosbox-x.app/Contents/MacOS/dosbox-x $top/package/dosbox-x-sdl2/dosbox-x.app/Contents/MacOS/dosbox-x
+          chmod +x $top/package/dosbox-x/dosbox-x.app/Contents/MacOS/dosbox-x
           $top/package/dosbox-x/dosbox-x.app/Contents/MacOS/dosbox-x -tests
-          $top/package/dosbox-x-sdl2/dosbox-x.app/Contents/MacOS/dosbox-x -tests
       - name: Package build
         run: |
           top=`pwd`
           cp $top/CHANGELOG $top/package/dosbox-x/CHANGELOG.txt
           cp $top/COPYING $top/package/dosbox-x/COPYING.txt
           cp $top/contrib/macos/readme.txt $top/package/dosbox-x/README.txt
-          cp $top/CHANGELOG $top/package/dosbox-x-sdl2/CHANGELOG.txt
-          cp $top/COPYING $top/package/dosbox-x-sdl2/COPYING.txt
-          cp $top/contrib/macos/readme.txt $top/package/dosbox-x-sdl2/README.txt
           cd $top/package/
           TIMESTAMP="${{ env.timestamp }}"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
@@ -265,7 +230,6 @@ jobs:
           echo '#define OSFREE 1' >> vs/config_package.h
           rm -rf dosbox-x.app
           rm -rf "$top/package/dosbox-x/dosbox-x.app"
-          rm -rf "$top/package/dosbox-x-sdl2/dosbox-x.app"
       - name: Build macOS ARM Native OSFREE
         if: steps.osfree.outputs.osfree != 'true'
         run: |
@@ -274,14 +238,6 @@ jobs:
           strip $top/src/dosbox-x
           make dosbox-x.app
           mv dosbox-x.app $top/package/dosbox-x
-      - name: Build macOS ARM Legacy SDL2 OSFREE
-        if: steps.osfree.outputs.osfree != 'true'
-        run: |
-          top=`pwd`
-          ./build-macos-sdl2
-          strip $top/src/dosbox-x
-          make dosbox-x.app
-          mv dosbox-x.app $top/package/dosbox-x-sdl2
       - name: Package build
         if: steps.osfree.outputs.osfree != 'true'
         run: |
