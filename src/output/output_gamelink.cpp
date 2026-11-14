@@ -17,6 +17,7 @@
 #include "mixer.h"
 #include "mapper.h"
 #include "../gamelink/scancodes_windows.h"
+#include "gamelink_sdl_keyboard.h"
 #include "output/output_surface.h"
 #include "output/output_opengl.h"
 #include <output/output_tools_xbrz.h>
@@ -24,8 +25,13 @@
 using namespace std;
 
 extern uint32_t RunningProgramHash[4];
-#if !defined(C_SDL2)
-#error "gamelink output requires SDL2"
+// This renderer still owns an SDL2-shaped window/surface. The shared-memory
+// protocol and keyboard event conversion are SDL3-ready, but SDL3 output
+// must not be enabled until SDL_Block, window creation and rendering are ported.
+#if defined(C_SDL3)
+#error "GameLink SDL3 window/output integration is not implemented"
+#elif !defined(C_SDL2)
+#error "GameLink output currently requires SDL2"
 #endif
 
 void OUTPUT_GAMELINK_Select()
@@ -104,28 +110,12 @@ void OUTPUT_GAMELINK_InputEvent()
             {
                 const SDL_Scancode scancode = windows_scancode_table[static_cast< int >( ( blk * 32 ) + bit )];
             
-                // Build event
-                SDL_Event ev;
-                ev.key.type = 0;
-                ev.key.keysym.scancode = scancode;
-            
-                ev.key.keysym.mod = KMOD_NONE; // todo
-                ev.key.keysym.sym = SDLK_UNKNOWN; // todo
-
-                const uint32_t mask = 1 << bit;
-                if ( ( key & mask ) && !( old & mask ) ) {
-                    ev.key.type = SDL_KEYDOWN;
-                    ev.key.state = SDL_PRESSED;
-                }
-                if ( !( key & mask ) && ( old & mask ) ) {
-                    ev.key.type = SDL_KEYUP;
-                    ev.key.state = SDL_RELEASED;
-                }
-
-                // Dispatch?
-                if ( ev.key.type != 0 )
-                {
-                    MAPPER_CheckEvent( &ev );
+                const uint32_t mask = 1u << bit;
+                const bool was_pressed = (old & mask) != 0;
+                const bool is_pressed = (key & mask) != 0;
+                if (was_pressed != is_pressed) {
+                    SDL_Event ev = GameLink_MakeKeyboardEvent(scancode, is_pressed);
+                    MAPPER_CheckEvent(&ev);
                 }
             }
         }

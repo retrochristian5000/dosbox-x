@@ -36,10 +36,6 @@
 #include <semaphore.h>
 #endif // WIN32
 
-// SDL Dependencies
-#include "SDL_syswm.h"
-#include "SDL.h"
-
 extern bool is_paused;
 extern uint32_t RunningProgramLoadAddress;
 

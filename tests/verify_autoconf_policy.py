@@ -176,4 +176,12 @@ for present in (
 ):
     require(present, "compiler/metadata-aware external header probing")
 
+# A transitional SDL3 input adapter is not a functioning SDL3 renderer.
+# GameLink must remain compiled only for the existing SDL2 output backend.
+require('test "x$enable_gamelink" = xyes && test "x$SDL_STRING" = xSDL2',
+        "GameLink is gated on its currently supported SDL2 renderer")
+require('C_GAMELINK=0', "GameLink starts disabled on unsupported host backends")
+require('gamelink_requested=yes', "explicit unsupported GameLink request is tracked")
+require('GameLink needs SDL2 output today', "unsupported explicit GameLink fails clearly")
+
 print("Autoconf policy: ok")

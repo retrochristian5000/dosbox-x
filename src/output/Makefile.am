@@ -10,7 +10,7 @@ noinst_LIBRARIES = liboutput.a
 liboutput_a_SOURCES = output_direct3d.cpp output_opengl.cpp output_surface.cpp output_tools.cpp output_tools_xbrz.cpp output_ttf.cpp output_direct3d11.cpp
 
 if C_GAMELINK
-liboutput_a_SOURCES += output_gamelink.cpp
+liboutput_a_SOURCES += output_gamelink.cpp gamelink_sdl_keyboard.h
 endif
 
 if C_METAL

@@ -17,6 +17,16 @@ features that DOSBox-X has.
 GameLink can operate in two modes: fully remote controlled, and tracking
 only.
 
+**Backend status:** This fork currently builds GameLink on SDL2 targets.
+The GameLink shared-memory protocol is independent of the SDL version, and
+its keyboard-event construction now has SDL2 and SDL3 variants. However,
+the SDL3 host/output port is not complete: the renderer still uses SDL2
+window/surface structures, so `--enable-gamelink` is not an SDL3 enable
+switch. GameLink is currently unavailable on the SDL-free native macOS
+backend. The SDL2 path (including `sdl2-compat` where supported) remains
+available until GameLink has a tested native SDL3 output and event dispatch.
+Do not remove SDL2 GameLink support before that migration is verified.
+
 
 Fully Remote / Integrated Mode
 ------------------------------

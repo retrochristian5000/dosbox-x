@@ -612,23 +612,29 @@ fi
 AC_SUBST([SDL_STRING])
 AM_CONDITIONAL([NATIVE_MACOS], [test x"$enable_native_macos" = xyes])
 
-AH_TEMPLATE(C_GAMELINK,[Define to 1 to enable game link headless mode])
-dnl clock_gettime uses AC_SEARCH_LIBS([clock_gettime], [rt]) above;
-dnl the former lib(rt, main) probe did not verify any required symbol.
-AC_ARG_ENABLE(gamelink,AS_HELP_STRING([--disable-gamelink],[Disable headless game link output mode (only for SDL2)]),,enable_gamelink=yes)
-AC_MSG_CHECKING(whether gamelink is enabled) 
-if test x$enable_gamelink = xyes; then
-  if test "x$SDL_STRING" = "xSDL2"; then
-    AC_MSG_RESULT(yes)
-    C_GAMELINK=1
-    AC_DEFINE(C_GAMELINK,1)
-  else
-    AC_MSG_RESULT(no (requires SDL2))
+AH_TEMPLATE([C_GAMELINK],[Define to 1 to enable GameLink shared-memory integration])
+dnl The transport is SDL-independent, but output=GameLink still owns the
+dnl SDL2 window/surface and the GUI host has no complete SDL3 API backend.
+dnl Keep SDL2's existing enabled default; do not silently accept explicit
+dnl GameLink requests on an unsupported native or future SDL3 host.
+AC_ARG_ENABLE([gamelink],
+  [AS_HELP_STRING([--disable-gamelink], [Disable GameLink integration (SDL2 output only until SDL3 host port)])],
+  [enable_gamelink=$enableval; gamelink_requested=yes],
+  [enable_gamelink=yes; gamelink_requested=no])
+AC_MSG_CHECKING([whether GameLink is enabled])
+C_GAMELINK=0
+if test "x$enable_gamelink" = xyes && test "x$SDL_STRING" = xSDL2; then
+  C_GAMELINK=1
+  AC_DEFINE([C_GAMELINK], [1])
+  AC_MSG_RESULT([yes (SDL2 backend)])
+elif test "x$enable_gamelink" = xyes; then
+  AC_MSG_RESULT([no (SDL3/native window and output port required)])
+  if test "x$gamelink_requested" = xyes; then
+    AC_MSG_ERROR([GameLink needs SDL2 output today; its SDL3 input adapter is ready but SDL3 window/output integration is incomplete])
   fi
 else
-  AC_MSG_RESULT(no)
+  AC_MSG_RESULT([no (disabled)])
 fi
-
 AM_CONDITIONAL([C_GAMELINK], [test "x$C_GAMELINK" = x1])
 
 dnl FEATURE: Whether to use OpenGL

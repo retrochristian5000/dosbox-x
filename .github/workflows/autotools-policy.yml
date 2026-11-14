@@ -14,6 +14,10 @@ on:
       - 'scripts/resolve-macos-sdk.bash'
       - 'tests/verify_automake_policy.py'
       - 'tests/verify_sdl3_lifecycle.py'
+      - 'tests/verify_gamelink_sdl3.py'
+      - 'src/gamelink/**'
+      - 'src/output/output_gamelink.cpp'
+      - 'src/output/gamelink_sdl_keyboard.h'
       - 'src/gui/sdlmain.cpp'
       - '.github/workflows/autotools-policy.yml'
   pull_request:
@@ -29,6 +33,10 @@ on:
       - 'scripts/resolve-macos-sdk.bash'
       - 'tests/verify_automake_policy.py'
       - 'tests/verify_sdl3_lifecycle.py'
+      - 'tests/verify_gamelink_sdl3.py'
+      - 'src/gamelink/**'
+      - 'src/output/output_gamelink.cpp'
+      - 'src/output/gamelink_sdl_keyboard.h'
       - 'src/gui/sdlmain.cpp'
       - '.github/workflows/autotools-policy.yml'
 
@@ -46,6 +54,8 @@ jobs:
         run: python3 tests/verify_external_headers.py
       - name: Verify SDL3 lifecycle API migration
         run: python3 tests/verify_sdl3_lifecycle.py
+      - name: Verify GameLink keyboard-event ABI and backend gate
+        run: python3 tests/verify_gamelink_sdl3.py
       - name: Verify Automake graph and portability guard
         run: python3 tests/verify_automake_policy.py
       - name: Regenerate Autotools files

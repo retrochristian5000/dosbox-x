@@ -348,6 +348,19 @@ link dependency. The unused librt placeholder and C89-era `inline` /
 Direct3D 11 requires both `d3d11.h` and `dxgi.h` to pass header detection;
 one successful header cannot overwrite a prior failure.
 
+GameLink's shared-memory protocol is not inherently SDL2-specific. A
+version-aware keyboard-event helper prepares the SDL3 event layout
+(`key.scancode`, `key.down`, `SDL_EVENT_KEY_DOWN`/`UP`) while
+preserving SDL2 event behavior. Its Windows scancode table also selects
+the matching SDL header. The SDL3 output/window and central event
+dispatch remain unported, so `C_GAMELINK` is not enabled for SDL3 or
+the SDL-free native macOS backend; explicit `--enable-gamelink` fails
+on unsupported hosts rather than silently disabling the request.
+The existing SDL2 GameLink integration remains available. Run
+`python3 tests/verify_gamelink_sdl3.py` to validate the adapter with
+self-contained SDL2/SDL3 layout fixtures; this is **not** a full SDL3
+runtime build.
+
 The Autotools configuration requires GNU Autoconf 2.69 or newer. SDL2 is the
 supported cross-platform API baseline. The `--enable-sdl3` switch is reserved:
 it fails explicitly until the SDL3 host API port is complete rather than
