@@ -236,6 +236,20 @@ Depending on the target OS to run DOSBox-X, the build environment and procedures
 
 NOTICE: Lowend builds should NOT be compiled with MinGW-w64 since they have extra dependencies which are not supported by Windows XP, Vista and 9x/NT4.
 
+Direct SDL3 API migration (in progress)
+---------------------------------------
+
+The SDL3 lifecycle paths in `src/gui/sdlmain.cpp` now use SDL3's boolean
+initialization results, `SDL_GetVersion()` integer version, and
+`SDL_GetJoysticks()` ID enumeration without invoking SDL2 compatibility
+functions. The SDL3 path also skips the removed SDL CD-ROM initialization.
+These changes are intentionally guarded by `C_SDL3`; they are not proof that
+DOSBox-X already builds against SDL3. Direct SDL3 configuration still fails
+until SDL3 event/input structures, window creation/fullscreen behavior,
+renderer surfaces, audio, and remaining joystick consumers are ported and
+tested. Do not delete the working SDL2 backend or the SDL-free native macOS
+backend before the equivalent SDL3 features pass integration tests.
+
 The Autotools configuration requires GNU Autoconf 2.69 or newer. SDL2 is the
 supported cross-platform API baseline. The `--enable-sdl3` switch is reserved:
 it fails explicitly until the SDL3 host API port is complete rather than

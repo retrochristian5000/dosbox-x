@@ -3743,13 +3743,21 @@ static void GUI_StartUp() {
 
 #if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
     LOG(LOG_GUI,LOG_DEBUG)("Using native macOS host (SDL-free)");
+#elif defined(C_SDL3)
+    LOG(LOG_GUI,LOG_DEBUG)("This version uses the SDL3 API directly");
 #elif defined(C_SDL2)
     LOG(LOG_GUI,LOG_DEBUG)("This version compiled against SDL 2.x");
 #else
     LOG(LOG_GUI,LOG_DEBUG)("This version compiled against SDL 1.x");
 #endif
 
-#if defined(C_SDL2) && !(defined(C_NATIVE_MACOS) && C_NATIVE_MACOS)
+#if defined(C_SDL3)
+    const int sdl3_version = SDL_GetVersion();
+    LOG(LOG_GUI,LOG_DEBUG)("SDL3 version %u.%u.%u",
+        (unsigned int)SDL_VERSIONNUM_MAJOR(sdl3_version),
+        (unsigned int)SDL_VERSIONNUM_MINOR(sdl3_version),
+        (unsigned int)SDL_VERSIONNUM_MICRO(sdl3_version));
+#elif defined(C_SDL2) && !(defined(C_NATIVE_MACOS) && C_NATIVE_MACOS)
     /* while we're here, SDL 2.0.5 has some issues with Linux/X11, encourage the user to update SDL2. */
     {
         SDL_version v;
@@ -7098,7 +7106,11 @@ static void show_warning(char const * const message) {
     bool textonly = true;
 #ifdef WIN32
     textonly = false;
-    if ( !sdl.inited && SDL_Init(SDL_INIT_VIDEO|SDL_INIT_NOPARACHUTE) < 0 ) textonly = true;
+#if defined(C_SDL3)
+    if (!sdl.inited && !SDL_Init(SDL_INIT_VIDEO)) textonly = true;
+#else
+    if (!sdl.inited && SDL_Init(SDL_INIT_VIDEO|SDL_INIT_NOPARACHUTE) < 0) textonly = true;
+#endif
     sdl.inited = true;
 #endif
     LOG_MSG( "Warning: %s", message);
@@ -8851,7 +8863,11 @@ int main(int argc, char* argv[]) SDL_MAIN_NOEXCEPT {
                the Cocoa NS objects first, or else strange things happen, like
                DOSBox-X as an NSWindow with no apparent icon in the task manager,
                inability to change or maintain the menu at the top, etc. */
+#if defined(C_SDL3)
+            if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
+#else
             if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0)
+#endif
                 E_Exit("Can't init SDL %s",SDL_GetError());
 #endif
 
@@ -9613,19 +9629,38 @@ int main(int argc, char* argv[]) SDL_MAIN_NOEXCEPT {
 	LOG_MSG("Prevent capture: %u",preventcap);
 
         /* -- SDL init */
-        if (SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO|SDL_INIT_TIMER|SDL_INIT_NOPARACHUTE) >= 0)
+#if defined(C_SDL3)
+        /* SDL3 returns bool and no longer defines the timer/no-parachute flags. */
+        const bool sdl_initialized = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO);
+#else
+        const bool sdl_initialized =
+            SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_NOPARACHUTE) >= 0;
+#endif
+        if (sdl_initialized)
             sdl.inited = true;
         else
             E_Exit("Can't init SDL %s",SDL_GetError());
-#if defined(C_SDL2)
+#if defined(C_NATIVE_MACOS) && C_NATIVE_MACOS
+        LOG_MSG("Host: native macOS (SDL-free)");
+#elif defined(C_SDL3) || defined(C_SDL2)
+#if defined(C_SDL3)
+        const int sdl_version = SDL_GetVersion();
+        const unsigned int sdl_major = SDL_VERSIONNUM_MAJOR(sdl_version);
+        const unsigned int sdl_minor = SDL_VERSIONNUM_MINOR(sdl_version);
+        const unsigned int sdl_patch = SDL_VERSIONNUM_MICRO(sdl_version);
+#else
         SDL_version sdl_version;
         SDL_GetVersion(&sdl_version);
+        const unsigned int sdl_major = sdl_version.major;
+        const unsigned int sdl_minor = sdl_version.minor;
+        const unsigned int sdl_patch = sdl_version.patch;
+#endif
         const char* vdrv = SDL_GetCurrentVideoDriver();
         const char* adrv = SDL_GetCurrentAudioDriver();
         videodriver = vdrv ? vdrv : "(unknown)";
         std::string audiodriver = adrv ? adrv : "(unknown)";
-        LOG_MSG("SDL: version %d.%d.%d, Video %s, Audio %s",
-            sdl_version.major, sdl_version.minor, sdl_version.patch,
+        LOG_MSG("SDL: version %u.%u.%u, Video %s, Audio %s",
+            sdl_major, sdl_minor, sdl_patch,
             videodriver.c_str(), audiodriver.c_str());
 #if defined(LINUX)
         if(videodriver == "wayland") {
@@ -9636,7 +9671,7 @@ int main(int argc, char* argv[]) SDL_MAIN_NOEXCEPT {
             );
         }
 #endif //defined (LINUX)
-#endif //defined (C_SDL2)
+#endif // native macOS / SDL3 / SDL2
 #if defined(__MINGW32__) && defined(C_DEBUG)
         LOG_MSG("EXPERIMENTAL: Debugger enabled for MinGW build, DOSBox-X crashes depending on the terminal software you use. Launching from command prompt (cmd.exe) is recommended.");
 #endif
@@ -9663,8 +9698,20 @@ int main(int argc, char* argv[]) SDL_MAIN_NOEXCEPT {
         /* -- -- Initialise Joystick and CD-ROM separately. This way we can warn when it fails instead of exiting the application */
         LOG(LOG_MISC,LOG_DEBUG)("Initializing SDL joystick subsystem...");
         glide.fullscreen = &sdl.desktop.fullscreen;
-        if (SDL_InitSubSystem(SDL_INIT_JOYSTICK) >= 0) {
+#if defined(C_SDL3)
+        const bool joystick_initialized = SDL_InitSubSystem(SDL_INIT_JOYSTICK);
+#else
+        const bool joystick_initialized = SDL_InitSubSystem(SDL_INIT_JOYSTICK) >= 0;
+#endif
+        if (joystick_initialized) {
+#if defined(C_SDL3)
+            int joystick_count = 0;
+            SDL_JoystickID *joysticks = SDL_GetJoysticks(&joystick_count);
+            sdl.num_joysticks = joysticks ? (Bitu)joystick_count : 0;
+            SDL_free(joysticks);
+#else
             sdl.num_joysticks = (Bitu)SDL_NumJoysticks();
+#endif
             LOG(LOG_MISC,LOG_DEBUG)("SDL reports %u joysticks",(unsigned int)sdl.num_joysticks);
         }
         else {
@@ -9672,6 +9719,7 @@ int main(int argc, char* argv[]) SDL_MAIN_NOEXCEPT {
             sdl.num_joysticks = 0;
         }
 
+#if !defined(C_SDL3)
 #if defined(C_SDL2)
         if (SDL_CDROMInit() < 0) {
 #else
@@ -9679,6 +9727,7 @@ int main(int argc, char* argv[]) SDL_MAIN_NOEXCEPT {
 #endif
             LOG(LOG_GUI,LOG_WARN)("Failed to init CD-ROM support");
         }
+#endif /* SDL3 has no SDL CD-ROM subsystem. */
 
         /* must redraw after modeset */
         sdl.must_redraw_all = true;
@@ -9704,7 +9753,11 @@ int main(int argc, char* argv[]) SDL_MAIN_NOEXCEPT {
 
         if (getenv("SDL_VIDEODRIVER")==NULL) {
             putenv("SDL_VIDEODRIVER=windib");
+#if defined(C_SDL3)
+            if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) E_Exit("Can't init SDL Video %s",SDL_GetError());
+#else
             if (SDL_InitSubSystem(SDL_INIT_VIDEO)<0) E_Exit("Can't init SDL Video %s",SDL_GetError());
+#endif
             sdl.using_windib=true;
         } else {
             char* sdl_videodrv = getenv("SDL_VIDEODRIVER");
