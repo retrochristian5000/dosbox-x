@@ -6,6 +6,8 @@ on:
       - 'seeds/**'
       - 'tests/verify_grep_seed.py'
       - 'tests/verify_pkgconf_seed.py'
+      - 'tests/verify_autoconf_seed.py'
+      - 'autogen.sh'
       - 'configure.ac'
       - 'acinclude.m4'
       - 'build-macos'
@@ -15,6 +17,8 @@ on:
       - 'seeds/**'
       - 'tests/verify_grep_seed.py'
       - 'tests/verify_pkgconf_seed.py'
+      - 'tests/verify_autoconf_seed.py'
+      - 'autogen.sh'
       - 'configure.ac'
       - 'acinclude.m4'
       - 'build-macos'
@@ -33,3 +37,5 @@ jobs:
         run: python3 tests/verify_grep_seed.py
       - name: Check pkgconf discovery, missing-package diagnostics and Autotools wiring
         run: python3 tests/verify_pkgconf_seed.py
+      - name: Check clean-checkout Autoconf bootstrap preflight and selection
+        run: python3 tests/verify_autoconf_seed.py

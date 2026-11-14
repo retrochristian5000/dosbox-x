@@ -67,6 +67,31 @@ and pkg-config search paths; a host executable alone does not establish
 target ABI compatibility. Run `python3 tests/verify_pkgconf_seed.py`
 for focused verification.
 
+`seeds/autoconf.sh` selects GNU Autoconf 2.69 or newer. `DOSBOX_AUTOCONF`
+(or the conventional `AUTOCONF`) selects an explicit executable without a
+silent fallback. Normal arguments are forwarded to that executable.
+Before generating files, `autogen.sh` runs the seed's read-only
+`--doctor` check to expose the direct tools `aclocal`, `autoheader`,
+`automake` and the indirect requirements `autom4te`, GNU `m4`, Perl.
+It also reports whether the generated `configure` file and pinned zlib
+source are present. It **does not install or download** those dependencies.
+
+```sh
+./seeds/autoconf.sh --print-tool
+./seeds/autoconf.sh --doctor
+DOSBOX_AUTOCONF=/path/to/autoconf ./seeds/autoconf.sh --doctor
+```
+
+On a fresh Git clone, `autogen.sh` may initialize the pinned
+`vs/zlib` submodule **after** reporting it in the preflight. It will not
+fetch it when `WHP_SUBMODULES=0`; in that case the missing dependency
+causes an explicit failure. Source archives lacking both the submodule
+contents and Git metadata cannot initialize it themselves. The probe
+checks Autoconf and its same-version autoheader/autom4te helpers, but does
+not certify wider Automake compatibility, full buildability, or the pinned
+gitlink revision.
+Run `python3 tests/verify_autoconf_seed.py` for focused validation.
+
 Useful commands:
 
 ```
