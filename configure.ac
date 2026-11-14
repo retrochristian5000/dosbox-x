@@ -10,14 +10,8 @@ AC_SUBST([COPYRIGHT_YEAR])
 
 dnl Utility function ============================
 
-dnl LIBRARY TEST: OpenGL support
-AC_CHECK_LIB(GL, main, have_gl_lib=yes, have_gl_lib=no , )
-AC_CHECK_LIB(opengl32, main, have_opengl32_lib=yes,have_opengl32_lib=no , )
-AC_CHECK_HEADER(GL/gl.h, have_gl_h=yes , have_gl_h=no , )
-
-dnl LIBRARY TEST: Direct3D 9 header support
-AC_CHECK_HEADER(d3d9.h, have_d3d9_h=yes , have_d3d9_h=no , )
-AC_CHECK_HEADER(d3dx9math.h, have_d3dx9math_h=yes , have_d3dx9math_h=no , )
+dnl Graphics probes run after AC_PROG_CC/CXX and toolchain selection below.
+dnl Do not trigger an implicit compiler initialization from AC_CHECK_LIB.
 
 dnl Utility function ============================
 
@@ -198,28 +192,35 @@ AM_PROG_AR
 AC_PROG_RANLIB
 AC_PREFIX_DEFAULT([/usr/local])
 
+dnl LIBRARY TEST: Graphics fallbacks.
+dnl Probe real exported symbols, not main (which is supplied by the test).
+dnl Keep the existing fallback branches for Unix GL and Windows opengl32.
+AC_CHECK_LIB([GL], [glGetString],
+             [have_gl_lib=yes], [have_gl_lib=no])
+AC_CHECK_LIB([opengl32], [wglCreateContext],
+             [have_opengl32_lib=yes], [have_opengl32_lib=no])
+AC_CHECK_HEADER([GL/gl.h], [have_gl_h=yes], [have_gl_h=no])
+
+dnl LIBRARY TEST: Direct3D 9 headers.
+AC_CHECK_HEADER([d3d9.h], [have_d3d9_h=yes], [have_d3d9_h=no])
+AC_CHECK_HEADER([d3dx9math.h], [have_d3dx9math_h=yes], [have_d3dx9math_h=no])
+
 dnl this code needs large file support on 32-bit systems
 AC_SYS_LARGEFILE
 
 #Check for big endian machine, should #define WORDS_BIGENDIAN if so
 AC_C_BIGENDIAN
 
-dnl Checks for typedefs, structures, and compiler characteristics.
-AC_C_INLINE
+dnl C11 already requires inline; do not generate legacy inline shims.
+dnl Keep the size_t check for older system-header compatibility.
 AC_TYPE_SIZE_T
 
 dnl some semi complex check for sys/socket so it works on darwin as well
 AC_CHECK_HEADERS([stdlib.h sys/types.h])
 AC_CHECK_HEADERS([sys/socket.h  netinet/in.h pwd.h], [], [],
 [#include <stdio.h>
-#ifdef STDC_HEADERS
-# include <stdlib.h>
-# include <stddef.h>
-#else
-# ifdef HAVE_STDLIB_H
-#  include <stdlib.h>
-# endif
-#endif
+#include <stdlib.h>
+#include <stddef.h>
 #ifdef HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
@@ -618,7 +619,8 @@ AC_SUBST([SDL_STRING])
 AM_CONDITIONAL([NATIVE_MACOS], [test x"$enable_native_macos" = xyes])
 
 AH_TEMPLATE(C_GAMELINK,[Define to 1 to enable game link headless mode])
-AC_CHECK_LIB(rt, main, have_rt_lib=yes, have_rt_lib=no , )
+dnl clock_gettime uses AC_SEARCH_LIBS([clock_gettime], [rt]) above;
+dnl the former lib(rt, main) probe did not verify any required symbol.
 AC_ARG_ENABLE(gamelink,AS_HELP_STRING([--disable-gamelink],[Disable headless game link output mode (only for SDL2)]),,enable_gamelink=yes)
 AC_MSG_CHECKING(whether gamelink is enabled) 
 if test x$enable_gamelink = xyes; then
@@ -980,8 +982,10 @@ void test(){}
 ])], , enable_x11=no)
 if test x$enable_x11 != xno; then
   dnl LIBRARY TEST: X11 Xlib support
-  AC_CHECK_LIB(X11, main, have_x11_lib=yes, have_x11_lib=no, )
-  AC_CHECK_LIB(Xrandr, XRRGetCrtcInfo, have_xrandr_lib=yes, have_xrandr_lib=no, )
+  AC_CHECK_LIB([X11], [XOpenDisplay],
+               [have_x11_lib=yes], [have_x11_lib=no])
+  AC_CHECK_LIB([Xrandr], [XRRGetCrtcInfo],
+               [have_xrandr_lib=yes], [have_xrandr_lib=no], [-lX11])
   AC_CHECK_HEADER(X11/XKBlib.h, have_x11_h=yes, have_x11_h=no, )
 
   dnl Compile test will fail for XKBrules.h if we do not also include XKBlib.h
@@ -1486,7 +1490,10 @@ AC_MSG_CHECKING([for D3D11 support])
 
 AC_LANG_PUSH([C++])
 
-AC_CHECK_HEADERS([d3d11.h dxgi.h], [have_d3d11_h=yes], [have_d3d11_h=no])
+dnl Both headers are required. Do not overwrite an earlier failure when
+dnl the last header in a list happens to compile successfully.
+have_d3d11_h=yes
+AC_CHECK_HEADERS([d3d11.h dxgi.h], [], [have_d3d11_h=no])
 AC_CHECK_HEADERS([d3dcompiler.h], [have_d3dcompiler_h=yes], [have_d3dcompiler_h=no])
 
 D3D11_LIBS=""
@@ -1512,12 +1519,12 @@ AH_TEMPLATE(C_ICONV,[Define to 1 to use iconv])
 if test x$have_iconv_h = xyes; then
     AC_DEFINE(C_ICONV,1)
     AC_MSG_CHECKING([whether we must link against -liconv])
-    AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-    #include <iconv.h>
-    iconv_t wrap_open(const char *tocode, const char *fromcode) {
-      return iconv_open(tocode, fromcode);
-    }]])],
-    AC_MSG_RESULT(no), [AC_MSG_RESULT(yes);LIBS="$LIBS -liconv"])
+    AC_LINK_IFELSE(
+      [AC_LANG_PROGRAM([[#include <iconv.h>]],
+                       [[iconv_t cd = iconv_open("UTF-8", "UTF-8");
+                         return cd == (iconv_t)-1;]])],
+      [AC_MSG_RESULT([no])],
+      [AC_MSG_RESULT([yes]); LIBS="$LIBS -liconv"])
 fi
 
 dnl placeholder

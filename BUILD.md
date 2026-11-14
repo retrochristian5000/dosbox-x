@@ -327,6 +327,14 @@ renderer surfaces, audio, and remaining joystick consumers are ported and
 tested. Linux/Windows SDL2 paths remain temporary until equivalent native SDL3
 features pass integration tests. The SDL-free native macOS backend is retained.
 
+The primary Autoconf probes use the selected C/C++ compiler before testing
+graphics libraries. The GL, opengl32 and X11 fallbacks check exported library
+symbols rather than linking a dummy `main`; Xrandr is checked with its X11
+link dependency. The unused librt placeholder and C89-era `inline` /
+`STDC_HEADERS` checks are retired under the project's C11 requirement.
+Direct3D 11 requires both `d3d11.h` and `dxgi.h` to pass header detection;
+one successful header cannot overwrite a prior failure.
+
 The Autotools configuration requires GNU Autoconf 2.69 or newer. SDL2 is the
 supported cross-platform API baseline. The `--enable-sdl3` switch is reserved:
 it fails explicitly until the SDL3 host API port is complete rather than

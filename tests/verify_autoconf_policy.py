@@ -42,10 +42,37 @@ for needle, label in {
 }.items():
     require(needle, label)
 
-if CONFIGURE.count("AC_CHECK_LIB(GL, main") != 1:
-    raise AssertionError("OpenGL library probe must have exactly one source of truth")
-if CONFIGURE.count("AC_CHECK_HEADER(d3d9.h") != 1:
-    raise AssertionError("Direct3D 9 header probe must have exactly one source of truth")
+# Library probes must not run before the configured C and C++ compilers are
+# available; a function named "main" cannot certify that a library works.
+probes = (
+    "AC_CHECK_LIB([GL], [glGetString]",
+    "AC_CHECK_LIB([opengl32], [wglCreateContext]",
+    "AC_CHECK_HEADER([GL/gl.h]",
+    "AC_CHECK_HEADER([d3d9.h]",
+    "AC_CHECK_HEADER([d3dx9math.h]",
+    "AC_CHECK_LIB([X11], [XOpenDisplay]",
+    "AC_CHECK_LIB([Xrandr], [XRRGetCrtcInfo]",
+)
+for probe in probes:
+    if CONFIGURE.count(probe) != 1:
+        raise AssertionError(f"expected exactly one working graphics probe: {probe}")
+if min(CONFIGURE.index(probe) for probe in probes[:5]) < CONFIGURE.index("AC_PROG_CXX"):
+    raise AssertionError("graphics probes initialize host compilers too early")
+if "AC_CHECK_LIB(rt, main" in CONFIGURE or "AC_CHECK_LIB([rt], [main]" in CONFIGURE:
+    raise AssertionError("stale librt placeholder check returned")
+if "AC_C_INLINE" in CONFIGURE or "STDC_HEADERS" in CONFIGURE:
+    raise AssertionError("C11 builds must not depend on obsolete inline/header probes")
+if "[-lX11])" not in CONFIGURE:
+    raise AssertionError("Xrandr link probe must supply its X11 dependency")
+
+# Both d3d11.h and dxgi.h are necessary; a callback that resets success
+# on the final header can wrongly enable Direct3D when an earlier one fails.
+for probe in (
+    "have_d3d11_h=yes",
+    "AC_CHECK_HEADERS([d3d11.h dxgi.h], [], [have_d3d11_h=no])",
+):
+    if probe not in CONFIGURE:
+        raise AssertionError(f"Direct3D 11 header aggregation missing: {probe}")
 
 for bad in (
     "AC_CHECK_CFLAGS([-std=gnu11], [],\n      [AC_MSG_ERROR",
@@ -114,5 +141,24 @@ require("dosbox_pkgconf_exists()",
         "shared pkg-config feature check helper")
 if "pkg-config --exists" in CONFIGURE or "pkg-config --exists" in ACINCLUDE:
     raise AssertionError("bare pkg-config calls bypass selected PKG_CONFIG")
+
+# Reject genuinely obsolete macro calls in both primary M4 inputs. Look at
+# call sites rather than comments or strings documenting old constructs.
+import re
+
+for source_name, source in (("configure.ac", CONFIGURE), ("acinclude.m4", ACINCLUDE)):
+    for deprecated in (
+        "AC_TRY_COMPILE", "AC_TRY_LINK", "AC_TRY_RUN", "AC_TRY_CPP",
+        "AC_CONFIG_HEADER", "AC_HELP_STRING", "AC_HEADER_STDC",
+        "AC_HEADER_TIME", "AC_PROG_CC_STDC", "AC_PROG_CC_C89",
+        "AC_PROG_CC_C99", "AC_LANG_SAVE", "AC_LANG_RESTORE",
+    ):
+        if re.search(r"(?m)^\s*" + deprecated + r"\s*(?:\(|$)", source):
+            raise AssertionError(f"{source_name} uses obsolete Autoconf call {deprecated}")
+
+# The iconv link probe must call iconv_open, not merely declare an unused
+# function whose unresolved symbol could be discarded by the linker.
+if 'iconv_t cd = iconv_open("UTF-8", "UTF-8");' not in CONFIGURE:
+    raise AssertionError("iconv link test does not force symbol resolution")
 
 print("Autoconf policy: ok")
