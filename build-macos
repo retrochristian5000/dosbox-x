@@ -177,13 +177,13 @@ dependency_is_fresh() {
     [ "$(cat "$keyfile")" = "$key" ] || return 1
     [ -d "$prefix/include" ] || return 1
     [ -d "$prefix/lib" ] || return 1
-    find "$prefix/lib" -type f -name '*.a' -size +0 -print -quit | grep -q . || return 1
+    find "$prefix/lib" -type f -name '*.a' -size +0 -print -quit | "$grep_tool" -q . || return 1
 
     for source in "$@"; do
         if [ -d "$source" ]; then
             if find "$source" \
                 \( -name linux-host -o -name linux-build -o -name .git \) -prune -o \
-                -type f -newer "$keyfile" -print -quit | grep -q .; then
+                -type f -newer "$keyfile" -print -quit | "$grep_tool" -q .; then
                 return 1
             fi
         elif [ -e "$source" ] && [ "$source" -nt "$keyfile" ]; then
@@ -222,6 +222,14 @@ for arch in ${architectures}; do
                 dosbox_brew install "$formula" || exit 1
         done
     fi
+
+    # Select once for this target's PATH; do not prepend seeds/ or replace
+    # Autoconf's own grep probing with an unverified shell shim.
+    grep_tool="$("$top/seeds/grep.sh" --print-tool)" || {
+        echo "Cannot resolve a usable host grep for ${arch}" >&2
+        exit 1
+    }
+    printf 'Configuration grep for %s: %s\n' "$arch" "$grep_tool"
 
     arch_flags="-arch ${arch} -mmacosx-version-min=10.13 "
     CFLAGS="${arch_flags}${orig_CFLAGS}"

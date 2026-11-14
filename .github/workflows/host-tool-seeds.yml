@@ -1,0 +1,27 @@
+name: Host-tool seed policy
+
+on:
+  push:
+    paths:
+      - 'seeds/**'
+      - 'tests/verify_grep_seed.py'
+      - 'build-macos'
+      - '.github/workflows/host-tool-seeds.yml'
+  pull_request:
+    paths:
+      - 'seeds/**'
+      - 'tests/verify_grep_seed.py'
+      - 'build-macos'
+      - '.github/workflows/host-tool-seeds.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  grep-seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Check host grep resolution, POSIX semantics and macOS wiring
+        run: python3 tests/verify_grep_seed.py

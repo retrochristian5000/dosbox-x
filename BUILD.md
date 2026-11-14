@@ -16,6 +16,26 @@ This fork provides `./build.sh` as a single front door for the existing platform
 With no profile, it detects common Unix, macOS, and MinGW/MSYS hosts and dispatches to the matching backend.
 The specialized `build-*` scripts remain the source of their platform-specific compiler and configure logic.
 
+Host-tool seeds
+---------------
+
+The `seeds/` directory contains small host-tool selectors, starting with
+`seeds/grep.sh` (POSIX `sh`). It uses an installed grep executable; it
+does **not** compile or emulate grep, nor is it put ahead of other tools on
+`PATH`. Pass ordinary grep arguments through it, or use
+`./seeds/grep.sh --print-tool` to resolve and verify the host executable.
+`DOSBOX_GREP=/path/to/grep` selects a specific executable;
+`DOSBOX_GREP_VERBOSE=1` prints the selected tool to stderr without
+contaminating stdout or grep matches. Missing or unusable tools fail with
+status 127; ordinary matches, no-matches, and grep errors retain their
+native exit statuses (0, 1, and typically 2).
+
+The macOS build selects grep once per target architecture, after choosing
+the Homebrew search path, and uses it for dependency-cache configuration
+checks. Autoconf retains its own grep feature detection; the SDL-free
+linkage guards and other build paths are not silently rewritten.
+Run `python3 tests/verify_grep_seed.py` to test the seed and wiring.
+
 Useful commands:
 
 ```
