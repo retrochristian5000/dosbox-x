@@ -634,8 +634,8 @@ if "DOSBoxMac_InitSubSystem(SDL_INIT_EVENTS)" in native:
     raise AssertionError(
         "native event implementation still routes through SDL_INIT_EVENTS compatibility"
     )
-require(native, "AppKit event delivery is a native host service initialized lazily",
-        "native event subsystem must document its AppKit-owned lifecycle")
+# Event initialization, polling, and dispatch are checked structurally above.
+# Do not require a particular prose comment in the native implementation.
 
 if "SDL_INIT_JOYSTICK" in native:
     raise AssertionError(
