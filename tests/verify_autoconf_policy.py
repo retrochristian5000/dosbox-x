@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Static guard for modern, portable configure.ac conventions."""
 
+import re
 from pathlib import Path
 
 
@@ -144,8 +145,6 @@ if "pkg-config --exists" in CONFIGURE or "pkg-config --exists" in ACINCLUDE:
 
 # Reject genuinely obsolete macro calls in both primary M4 inputs. Look at
 # call sites rather than comments or strings documenting old constructs.
-import re
-
 for source_name, source in (("configure.ac", CONFIGURE), ("acinclude.m4", ACINCLUDE)):
     for deprecated in (
         "AC_TRY_COMPILE", "AC_TRY_LINK", "AC_TRY_RUN", "AC_TRY_CPP",
