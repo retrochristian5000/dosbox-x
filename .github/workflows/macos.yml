@@ -86,7 +86,7 @@ jobs:
           7zz a "$top/$ZIPNAME" *
           cd $top
       - name: Upload preview package
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ env.ZIPNAME }}
           path: "${{ github.workspace }}/${{ env.ZIPNAME }}"
@@ -128,7 +128,7 @@ jobs:
           cd $top
       - name: Upload preview package
         if: steps.osfree.outputs.osfree != 'true'
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ env.ZIPNAME }}
           path: "${{ github.workspace }}/${{ env.ZIPNAME }}"
@@ -212,7 +212,7 @@ jobs:
           7zz a "$top/$ZIPNAME" *
           cd $top
       - name: Upload preview package
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ env.ZIPNAME }}
           path: "${{ github.workspace }}/${{ env.ZIPNAME }}"
@@ -254,7 +254,7 @@ jobs:
           cd $top
       - name: Upload preview package
         if: steps.osfree.outputs.osfree != 'true'
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ env.ZIPNAME }}
           path: "${{ github.workspace }}/${{ env.ZIPNAME }}"
